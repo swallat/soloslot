@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- The installed desktop app can now split full songs: on first use it downloads `uv`
+  (checksum verified), creates a private Python environment in the user's data folder and
+  installs `soloslot[separate]` (CPU PyTorch on Linux). Separation runs there and its output
+  streams into the Details section.
+
 ## [0.2.0] - 2026-11-08
 
 ### Added

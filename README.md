@@ -125,9 +125,9 @@ Prebuilt installers (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`) are attach
 Windows SmartScreen shows "unknown publisher" (More info, Run anyway), and on macOS you open
 the app once with right-click, Open.
 
-The installers are slim and do not contain PyTorch, so splitting full songs with Demucs inside
-the installed app is not available yet (use a stems folder, or install with
-`uv tool install 'soloslot[gui,separate]'`).
+The installers are slim and do not contain PyTorch. The first time you split a full song, the
+app asks to download PyTorch and Demucs once (about 1 to 2 GB, kept in your user data folder,
+needs internet). Stems folders work without it.
 
 The window checks for a newer release at startup and offers to download the installer
 (checksum verified). Set `SOLOSLOT_NO_UPDATE_CHECK=1` to turn that off.

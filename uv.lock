@@ -897,7 +897,7 @@ requires-dist = [
     { name = "demucs", marker = "extra == 'separate'", specifier = ">=4.1" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "pyside6-essentials", marker = "extra == 'gui'", specifier = ">=6.7" },
-    { name = "soundfile", specifier = ">=0.12" },
+    { name = "soundfile", specifier = ">=0.13" },
 ]
 provides-extras = ["separate", "gui"]
 

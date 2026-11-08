@@ -126,7 +126,12 @@ def test_format_defaults_to_wav_and_accepts_flac(tmp_path: Path) -> None:
     assert load_config(cfg)[0].format == "wav"
 
 
+def test_mp3_format_is_accepted(tmp_path: Path) -> None:
+    cfg = write(tmp_path, 'solos = [ { start = 1, end = 2 } ]\nformat = "MP3"\n')
+    assert load_config(cfg)[0].format == "mp3"
+
+
 def test_invalid_format(tmp_path: Path) -> None:
-    cfg = write(tmp_path, 'solos = [ { start = 1, end = 2 } ]\nformat = "mp3"\n')
+    cfg = write(tmp_path, 'solos = [ { start = 1, end = 2 } ]\nformat = "ogg"\n')
     with pytest.raises(ConfigError):
         load_config(cfg)

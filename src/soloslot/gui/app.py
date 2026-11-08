@@ -33,11 +33,11 @@ try:
 except ImportError:  # pragma: no cover
     raise SystemExit("The GUI needs PySide6: pip install 'soloslot[gui]'") from None
 
-from soloslot import __version__
+from soloslot import __version__, bootstrap
 from soloslot.config import OUTPUT_FORMATS, ConfigError
 from soloslot.gui.about import show_about
 from soloslot.gui.branding import app_icon, apply_style, mark_pixmap
-from soloslot.gui.model import DEFAULT_STEMS, Form, build_song, stems_of
+from soloslot.gui.model import DEFAULT_STEMS, Form, build_song, cli_args, stems_of
 from soloslot.process import process_song
 from soloslot.update import Update, UpdateError, check_for_update, download_update
 
@@ -62,15 +62,15 @@ class Worker(QObject):
     line = Signal(str)
     finished = Signal(bool)
 
-    def __init__(self, song):
+    def __init__(self, job):
         super().__init__()
-        self._song = song
+        self._job = job  # called with a log function, returns True on success
 
     def run(self) -> None:
         stream = _Stream(self.line.emit)
         try:
             with contextlib.redirect_stderr(stream), contextlib.redirect_stdout(stream):
-                ok = process_song(self._song, log=self.line.emit)
+                ok = self._job(self.line.emit)
         except Exception as e:  # show anything unexpected in the log instead of dying silently
             self.line.emit(f"  ERROR: {type(e).__name__}: {e}")
             ok = False
@@ -344,22 +344,51 @@ class MainWindow(QMainWindow):
         )
 
     def _start(self) -> None:
+        form = self._form()
         try:
-            song = build_song(self._form())
+            song = build_song(form)
+            job = self._make_job(form, song)
         except ConfigError as e:
             QMessageBox.warning(self, "soloslot", str(e))
+            return
+        if job is None:
             return
         self.log.clear()
         self.start.setEnabled(False)
         self.progress.setRange(0, 0)  # busy indicator
         self._thread = QThread()
-        self._worker = Worker(song)
+        self._worker = Worker(job)
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
         self._worker.line.connect(self.log.appendPlainText)
         self._worker.finished.connect(self._done)
         self._worker.finished.connect(self._thread.quit)
         self._thread.start()
+
+    def _make_job(self, form: Form, song):
+        """What to run. The installed app splits songs in a private environment with Demucs."""
+        if not (_frozen() and song.input is not None):
+            return lambda log: process_song(song, log=log)
+        args = cli_args(form)
+        if not bootstrap.is_installed():
+            answer = QMessageBox.question(
+                self,
+                "Set up stem separation",
+                "Splitting a song needs PyTorch and Demucs. They are downloaded once "
+                "(about 1 to 2 GB) and kept in your user folder.\n\nSet up now?",
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return None
+
+        def job(log) -> bool:
+            try:
+                bootstrap.install_separation(__version__, log=log)
+            except bootstrap.SetupError as e:
+                log(f"  ERROR: {e}")
+                return False
+            return bootstrap.run_separation(args, log=log)
+
+        return job
 
     def _done(self, ok: bool) -> None:
         self.start.setEnabled(True)

@@ -47,8 +47,8 @@ That is the whole workflow: one song in, one backing track out.
   output folder, and soloslot refuses to write over your input.
 - **Private and offline.** Everything runs on your computer. Your recordings are never uploaded.
   Only the Demucs model is downloaded, once.
-- **Lossless output.** WAV or FLAC, with the bit depth of your source preserved (MP3 input is
-  written as 24 bit).
+- **Lossless or MP3 output.** WAV or FLAC keep the bit depth of your source (MP3 input is
+  written as 24 bit); MP3 is there for small files you can put on a phone.
 - **Plain-text config for repeat use.** Describe a song, or a whole repertoire, in a small TOML
   file. Give solos as timestamps or as bar numbers.
 
@@ -105,7 +105,7 @@ soloslot song.mp3 --solo 2:15-3:40 --mute guitar --dry-run
 | `--hear STEMS` | The opposite: only these stems stay in the solo. Use one of the two. |
 | `--model` | Demucs model. Default `htdemucs_6s` splits into **drums, bass, guitar, piano, vocals, other**. `htdemucs` and `htdemucs_ft` give drums, bass, vocals, other, and are a bit cleaner at that. |
 | `--backing-only` | Write only the backing track. |
-| `--format flac` | Write FLAC instead of WAV. |
+| `--format flac` | Write FLAC (or `mp3`) instead of WAV. |
 | `-o, --output DIR` | Output folder. Default: `out/<song>/` next to the song. |
 | `--dry-run` | Show what would happen and write nothing. |
 
@@ -130,9 +130,9 @@ Prebuilt installers (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`) are attach
 Windows SmartScreen shows "unknown publisher" (More info, Run anyway), and on macOS you open
 the app once with right-click, Open.
 
-The installers are slim and do not contain PyTorch, so splitting full songs with Demucs inside
-the installed app is not available yet (use a stems folder, or install with
-`uv tool install 'soloslot[gui,separate]'`).
+The installers are slim and do not contain PyTorch. The first time you split a full song, the
+app asks to download PyTorch and Demucs once (about 1 to 2 GB, kept in your user data folder,
+needs internet). Stems folders work without it.
 
 Help > About shows the version, links and the licenses of everything soloslot is built on
 (also in [THIRD_PARTY_NOTICES.md](src/soloslot/gui/assets/THIRD_PARTY_NOTICES.md)).
@@ -201,8 +201,9 @@ song can override them.
 - **`mute`**: the opposite of `hear`. Use either one per song.
 - **`skip`**: files or stems to ignore, such as a full mix (`["visualizer"]`).
 - **`solos`**: one or more solo regions, see below.
-- **`format`**: `"wav"` (default) or `"flac"`. FLAC is lossless and smaller; float or 32 bit
-  input becomes 24 bit there.
+- **`format`**: `"wav"` (default), `"flac"` or `"mp3"`. FLAC is lossless and smaller; float or
+  32 bit input becomes 24 bit there. MP3 is lossy (encoded by the LAME encoder inside
+  libsndfile, so no extra install) and is meant for listening, not for further editing.
 - **`stems`**: `stems = false` writes only the backing track.
 - **`fade_ms`**, **`mixdown`**, **`output`**: see `songs.example.toml`.
 - Relative paths are resolved against the directory of the config file.
@@ -258,5 +259,6 @@ and [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 soloslot installs these libraries, which keep their own licenses: click (BSD-3-Clause), NumPy
 (BSD-3-Clause and other permissive licenses) and python-soundfile (BSD-3-Clause), whose binary
-wheels include libsndfile (LGPL-2.1-or-later). The `separate` extra adds Demucs (MIT) and
+wheels include libsndfile (LGPL-2.1-or-later) with its MP3 codecs LAME and mpg123 (both
+LGPL-2.1-or-later); they are loaded as separate shared libraries, which the LGPL allows. The `separate` extra adds Demucs (MIT) and
 PyTorch (BSD-3-Clause).

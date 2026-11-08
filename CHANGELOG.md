@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Installers show the logo: Windows setup wizard images, macOS disk image volume icon and
+  Applications shortcut.
+
 ## [0.3.0] - 2026-11-08
 
 ### Added

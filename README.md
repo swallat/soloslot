@@ -123,7 +123,14 @@ tick the stems to mute, pick an output folder and press the button. The console 
 Prebuilt installers (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`) are attached to each
 [release](https://github.com/swallat/soloslot/releases). They are not code-signed yet:
 Windows SmartScreen shows "unknown publisher" (More info, Run anyway), and on macOS you open
-the app once with right-click, Open. The window checks for a newer release at startup and offers to download the installer (checksum verified); set `SOLOSLOT_NO_UPDATE_CHECK=1` to turn that off. The installers are slim and do not contain PyTorch, so splitting full songs with Demucs inside the installed app is not available yet (use a stems folder, or install with `uv tool install 'soloslot[gui,separate]'`).
+the app once with right-click, Open.
+
+The installers are slim and do not contain PyTorch, so splitting full songs with Demucs inside
+the installed app is not available yet (use a stems folder, or install with
+`uv tool install 'soloslot[gui,separate]'`).
+
+The window checks for a newer release at startup and offers to download the installer
+(checksum verified). Set `SOLOSLOT_NO_UPDATE_CHECK=1` to turn that off.
 
 ## Working with stems you already have
 

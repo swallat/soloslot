@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+OUTPUT_FORMATS = ("wav", "flac")
+
 
 class ConfigError(ValueError):
     """The config file or one of its songs is invalid."""
@@ -30,6 +32,7 @@ class Song:
     skip: tuple[str, ...] = ()
     fade_ms: float = 30.0
     mixdown: bool = True
+    format: str = "wav"
     notes: list[str] = field(default_factory=list, compare=False)
 
 
@@ -91,6 +94,9 @@ def _song(raw: dict[str, Any], defaults: dict[str, Any], base: Path, *, single: 
         name = str(raw["name"])
         folder = base / str(raw["folder"])
         output = base / str(merged.get("output", "out")) / name
+    fmt = str(merged.get("format", "wav")).lower().lstrip(".")
+    if fmt not in OUTPUT_FORMATS:
+        raise ConfigError(f"{name}: format must be one of {', '.join(OUTPUT_FORMATS)}, not {fmt!r}")
     return Song(
         name=name,
         folder=folder,
@@ -100,6 +106,7 @@ def _song(raw: dict[str, Any], defaults: dict[str, Any], base: Path, *, single: 
         skip=tuple(merged.get("skip", ())),
         fade_ms=float(merged.get("fade_ms", 30)),
         mixdown=bool(merged.get("mixdown", True)),
+        format=fmt,
     )
 
 

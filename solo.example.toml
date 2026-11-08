@@ -19,7 +19,8 @@ solos = [ { start = "2:15", end = "3:40" } ]
 # Optional:
 # name     = "Interplay"   # default: name of this folder
 # folder   = "."           # default: this folder
-# output   = "out"         # default: ./out
+# output   = "out"         # default: ./out (must not be the stems folder)
+# format   = "wav"         # or "flac"
 # fade_ms  = 30
 # mixdown  = true
 # beats_per_bar = 3

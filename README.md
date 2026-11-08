@@ -67,9 +67,12 @@ stem-solo-gap songs.toml --song Interplay   # one song
 
 Here the output goes to `out/<song>/`, next to the config file.
 
-In both layouts every stem is written as WAV with the same name (MP3 input becomes 24 bit;
-WAV/FLAC keep their bit depth), plus `<song> - Backing Track.wav` (the sum of all processed
+In both layouts every stem is written with the same name as WAV (or FLAC, see `format`; MP3 input
+becomes 24 bit, WAV/FLAC input keeps its bit depth), plus `<song> - Backing Track.wav` (the sum of all processed
 stems, 24 bit). The `out/` folder is not read as input on the next run.
+
+**Your original files are never modified.** Everything is written to the output folder; if
+`output` would resolve to the stems folder itself, the tool refuses and writes nothing.
 
 ### Config
 
@@ -79,6 +82,8 @@ stems, 24 bit). The `out/` folder is not read as input on the next run.
   nothing is reported as a warning, so a typo cannot silently mute a stem.
 - **`skip`**: files/stems to ignore, e.g. the full mix (`["visualizer"]`).
 - **`solos`**: one or more solo regions, see below.
+- **`format`**: output format, `"wav"` (default) or `"flac"`. Applies to the stems and the backing
+  track. FLAC is lossless and smaller; float or 32 bit input becomes 24 bit there.
 - **`fade_ms`**, **`mixdown`**, **`output`**: see `songs.example.toml`.
 - Defaults live in `[defaults]` and can be overridden per song.
 - Relative paths are resolved against the directory of the config file.

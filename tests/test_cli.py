@@ -159,3 +159,54 @@ def test_no_args_and_no_solo_toml(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     result = CliRunner().invoke(main, [])
     assert result.exit_code != 0
     assert "solo.toml" in result.output
+
+
+def test_flac_output(tmp_path: Path, stems_dir: Path) -> None:
+    cfg = tmp_path / "songs.toml"
+    cfg.write_text(CONFIG.replace("fade_ms = 5", 'fade_ms = 5\nformat = "flac"'), encoding="utf-8")
+    result = CliRunner().invoke(main, [str(cfg)])
+    assert result.exit_code == 0, result.output
+    out = tmp_path / "out" / "Song"
+    title = "Song (Official Visualizer)"
+    bass = out / f"{moises_name(title, 'Bass')[:-4]}.flac"
+    assert sf.info(bass).format == "FLAC"
+    assert sf.info(bass).subtype == "PCM_24"
+    assert level(out / f"{moises_name(title, 'Guitars')[:-4]}.flac", 3, 5) == 0.0
+    assert sf.info(out / "Song - Backing Track.flac").format == "FLAC"
+    assert not list(out.glob("*.wav"))
+
+
+def test_originals_are_never_overwritten(tmp_path: Path, stems_dir: Path) -> None:
+    before = {p.name: p.read_bytes() for p in stems_dir.iterdir()}
+    run(tmp_path)
+    assert {p.name: p.read_bytes() for p in stems_dir.iterdir()} == before
+
+
+def test_output_equal_to_stems_folder_is_refused(tmp_path: Path, stems_dir: Path) -> None:
+    cfg = tmp_path / "songs.toml"
+    cfg.write_text(
+        """
+[[song]]
+name = "Song"
+folder = "stems/Song"
+output = "stems"
+solos = [ { start = 2, end = 6 } ]
+""",
+        encoding="utf-8",
+    )
+    # output = "stems" + name "Song" == the stems folder itself
+    before = {p.name: p.read_bytes() for p in stems_dir.iterdir()}
+    result = CliRunner().invoke(main, [str(cfg)])
+    assert result.exit_code == 1
+    assert "output folder is the stems folder" in result.output
+    assert {p.name: p.read_bytes() for p in stems_dir.iterdir()} == before
+
+
+def test_single_song_output_dot_is_refused(
+    stems_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (stems_dir / "solo.toml").write_text(SINGLE + 'output = "."\n', encoding="utf-8")
+    monkeypatch.chdir(stems_dir)
+    result = CliRunner().invoke(main, [])
+    assert result.exit_code == 1
+    assert "output folder is the stems folder" in result.output

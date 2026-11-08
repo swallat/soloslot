@@ -117,3 +117,16 @@ def test_mixing_song_tables_and_top_level_solos_is_an_error(tmp_path: Path) -> N
     )
     with pytest.raises(ConfigError):
         load_config(cfg)
+
+
+def test_format_defaults_to_wav_and_accepts_flac(tmp_path: Path) -> None:
+    cfg = write(tmp_path, 'solos = [ { start = 1, end = 2 } ]\nformat = ".FLAC"\n')
+    assert load_config(cfg)[0].format == "flac"
+    cfg = write(tmp_path, "solos = [ { start = 1, end = 2 } ]\n")
+    assert load_config(cfg)[0].format == "wav"
+
+
+def test_invalid_format(tmp_path: Path) -> None:
+    cfg = write(tmp_path, 'solos = [ { start = 1, end = 2 } ]\nformat = "mp3"\n')
+    with pytest.raises(ConfigError):
+        load_config(cfg)

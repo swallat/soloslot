@@ -24,9 +24,13 @@ def find_audio_files(folder: Path) -> list[Path]:
     return sorted(chosen.values())
 
 
-def output_subtype(input_subtype: str) -> str:
-    """Keep the input's PCM format; lossy or unusual inputs become 24 bit PCM."""
-    return input_subtype if input_subtype in _LOSSLESS_SUBTYPES else "PCM_24"
+def output_subtype(input_subtype: str, fmt: str = "wav") -> str:
+    """Keep the input's bit depth; lossy or unsupported inputs become 24 bit PCM.
+
+    FLAC cannot store float or 32 bit PCM, so those become 24 bit there.
+    """
+    allowed = _LOSSLESS_SUBTYPES if fmt == "wav" else {"PCM_16", "PCM_24"}
+    return input_subtype if input_subtype in allowed else "PCM_24"
 
 
 def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None] = print) -> bool:
@@ -34,6 +38,10 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
     log(f"\n=== {song.name} ===")
     if not song.folder.is_dir():
         log(f"  ERROR: folder not found: {song.folder}")
+        return False
+    if song.output.resolve() == song.folder.resolve():
+        # Would overwrite the original stems and feed the results back in on the next run.
+        log("  ERROR: output folder is the stems folder; choose a different 'output'")
         return False
     for solo in song.solos:
         log(f"  Solo: {solo.start:7.2f}s - {solo.end:7.2f}s  ({solo.end - solo.start:.1f}s)")
@@ -71,14 +79,19 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
         results.append(result)
         if not dry_run:
             out_dir.mkdir(parents=True, exist_ok=True)
-            sf.write(out_dir / f"{f.stem}.wav", result, sr, subtype=output_subtype(info.subtype))
+            sf.write(
+                out_dir / f"{f.stem}.{song.format}",
+                result,
+                sr,
+                subtype=output_subtype(info.subtype, song.format),
+            )
 
     if song.mixdown and sample_rate is not None:
         mix, gain_db = mix_stems(results)
         if gain_db:
             log(f"  Mix would clip, lowered by {-gain_db:.1f} dB")
         if not dry_run:
-            path = out_dir / f"{song.name} - Backing Track.wav"
+            path = out_dir / f"{song.name} - Backing Track.{song.format}"
             sf.write(path, mix, sample_rate, subtype="PCM_24")
             log(f"  written: {path}")
 

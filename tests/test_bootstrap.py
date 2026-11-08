@@ -10,6 +10,7 @@ import pytest
 from soloslot import bootstrap
 from soloslot.bootstrap import (
     SetupError,
+    child_env,
     data_dir,
     ensure_uv,
     env_python,
@@ -110,3 +111,19 @@ def test_run_separation():
     ok = run_separation(["a.mp3"], python=Path("py"), run=lambda cmd, log: seen.append(cmd) or 0)
     assert ok
     assert [str(c) for c in seen[0]] == ["py", "-m", "soloslot", "a.mp3"]
+
+
+def test_child_env_undoes_bundle_changes():
+    env = child_env(
+        {
+            "LD_LIBRARY_PATH": "/bundle",
+            "LD_LIBRARY_PATH_ORIG": "/usr/lib",
+            "PYTHONHOME": "/bundle",
+            "PATH": "/bin",
+        }
+    )
+    assert env["LD_LIBRARY_PATH"] == "/usr/lib"
+    assert "LD_LIBRARY_PATH_ORIG" not in env
+    assert "PYTHONHOME" not in env
+    assert env["PATH"] == "/bin"
+    assert env["PYTHONUTF8"] == "1"

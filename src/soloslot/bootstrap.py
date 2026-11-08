@@ -128,9 +128,27 @@ def _extract(data: bytes, archive: str, exe: str) -> bytes:
     raise SetupError(f"{exe} not found in {archive}")
 
 
+def child_env(environ: dict[str, str] | None = None) -> dict[str, str]:
+    """Environment for child processes, undoing what a PyInstaller bundle changes.
+
+    The bundle prepends its own library folder to LD_LIBRARY_PATH / DYLD_LIBRARY_PATH (keeping
+    the original in *_ORIG); a child Python or uv would otherwise load the bundled libraries.
+    """
+    env = dict(os.environ if environ is None else environ)
+    for var in ("LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"):
+        original = env.pop(f"{var}_ORIG", None)
+        if original is not None:
+            env[var] = original
+        elif getattr(sys, "frozen", False):
+            env.pop(var, None)
+    for var in ("PYTHONHOME", "PYTHONPATH"):
+        env.pop(var, None)
+    env.update(PYTHONUNBUFFERED="1", PYTHONUTF8="1")
+    return env
+
+
 def stream(cmd: Sequence[str | Path], log: Log, *, cwd: Path | None = None) -> int:
     """Run `cmd`, forwarding each output line (progress bars included) to `log`."""
-    env = {**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONUTF8": "1"}
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)  # no console window on Windows
     with subprocess.Popen(
         [str(c) for c in cmd],
@@ -139,7 +157,7 @@ def stream(cmd: Sequence[str | Path], log: Log, *, cwd: Path | None = None) -> i
         text=True,  # universal newlines: \r progress updates become lines too
         encoding="utf-8",
         errors="replace",
-        env=env,
+        env=child_env(),
         cwd=cwd,
         creationflags=flags,
     ) as proc:

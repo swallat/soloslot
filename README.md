@@ -1,6 +1,9 @@
 # stem-solo-gap
 
-Clear a solo section out of stem WAVs to build play-along backing tracks.
+[![CI](https://github.com/swallat/stem-solo-gap/actions/workflows/ci.yml/badge.svg)](https://github.com/swallat/stem-solo-gap/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+Clear a solo section out of stem files to build play-along backing tracks.
 
 You split a recording into stems (Moises, Demucs, ...), say where the solo is and which
 stems should stay audible in it. The tool silences everything else in that region
@@ -8,12 +11,14 @@ stems should stay audible in it. The tool silences everything else in that regio
 
 ## Install
 
+Needs [uv](https://docs.astral.sh/uv/), which fetches a suitable Python (3.12 or newer) itself.
+
 ```bash
-uv tool install git+ssh://git@github.com/swallat/stem-solo-gap.git
+uv tool install git+https://github.com/swallat/stem-solo-gap.git
 stem-solo-gap --help
 ```
 
-Or from a checkout:
+Update with `uv tool upgrade stem-solo-gap`. Or install from a checkout:
 
 ```bash
 uv tool install .
@@ -133,6 +138,20 @@ mise run check    # ruff + pytest
 mise tasks        # all tasks
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to contribute, [CHANGELOG.md](CHANGELOG.md) for
+changes and [SECURITY.md](SECURITY.md) to report a vulnerability.
+
 ## License
 
-MIT
+[MIT](LICENSE) © 2026 Sebastian Wallat.
+
+The tool installs these libraries, which keep their own licenses: click (BSD-3-Clause),
+NumPy (BSD-3-Clause and other permissive licenses) and python-soundfile (BSD-3-Clause), whose
+binary wheels include the libsndfile library (LGPL-2.1-or-later).
+
+## Your audio
+
+The tool only processes files you provide. It does not include, download or split any
+recordings. Make sure you have the right to use your recordings and stems; the output keeps
+the copyright status of the original. For that reason, `*.wav`, `*.mp3` and `*.flac` are
+git-ignored and the tests use synthetic audio only.

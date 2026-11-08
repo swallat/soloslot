@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 import soundfile as sf
 from click.testing import CliRunner
 
@@ -104,3 +105,57 @@ def test_unknown_song(tmp_path: Path, stems_dir: Path) -> None:
     result = run(tmp_path, "--song", "Nope")
     assert result.exit_code != 0
     assert "not found" in result.output
+
+
+SINGLE = """
+hear = ["piano", "bass"]
+skip = ["visualizer"]
+fade_ms = 5
+solos = [ { start = 2, end = 6 } ]
+"""
+
+
+def test_runs_in_stems_folder_with_default_solo_toml(
+    stems_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (stems_dir / "solo.toml").write_text(SINGLE, encoding="utf-8")
+    monkeypatch.chdir(stems_dir)
+    result = CliRunner().invoke(main, [])
+    assert result.exit_code == 0, result.output
+    out = stems_dir / "out"  # next to the stems, no extra song sub folder
+    title = "Song (Official Visualizer)"
+    assert level(out / moises_name(title, "Guitars"), 3, 5) == 0.0
+    assert level(out / moises_name(title, "Bass"), 3, 5) > 0.09
+    assert (out / "Song - Backing Track.wav").exists()  # name defaults to the folder name
+
+
+def test_rerun_does_not_pick_up_its_own_output(
+    stems_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (stems_dir / "solo.toml").write_text(SINGLE, encoding="utf-8")
+    monkeypatch.chdir(stems_dir)
+    CliRunner().invoke(main, [])
+    result = CliRunner().invoke(main, [])
+    assert result.exit_code == 0
+    assert result.output.count("silent in solo") == 3  # drums, guitars, winds; nothing from out/
+
+
+def test_several_configs_in_one_call(tmp_path: Path, stems_dir: Path) -> None:
+    second = tmp_path / "stems" / "Two"
+    second.mkdir()
+    for f in stems_dir.glob("*.wav"):
+        (second / f.name).write_bytes(f.read_bytes())
+    (stems_dir / "solo.toml").write_text(SINGLE, encoding="utf-8")
+    (second / "solo.toml").write_text(SINGLE, encoding="utf-8")
+    result = CliRunner().invoke(main, [str(stems_dir / "solo.toml"), str(second / "solo.toml")])
+    assert result.exit_code == 0, result.output
+    assert "2 song(s) ok" in result.output
+    assert (stems_dir / "out" / "Song - Backing Track.wav").exists()
+    assert (second / "out" / "Two - Backing Track.wav").exists()
+
+
+def test_no_args_and_no_solo_toml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(main, [])
+    assert result.exit_code != 0
+    assert "solo.toml" in result.output

@@ -1,0 +1,26 @@
+# One song per config: save as "solo.toml" inside the folder with the stems and run
+#   stem-solo-gap
+# there. The stems are read from this folder, the result goes to ./out/.
+# The song name defaults to the folder name.
+#
+# "hear" = stems that stay AUDIBLE in the solo; every other stem is silenced there
+# (case-insensitive substring of the stem name, e.g. "piano" matches "Grand Piano").
+
+hear  = ["piano", "bass", "drums"]
+skip  = ["visualizer"]                     # ignore the full mix / other files
+
+# Solo as timestamps (no bpm needed) ...
+solos = [ { start = "2:15", end = "3:40" } ]
+
+# ... or as bars (needs bpm):
+# bpm   = 113
+# solos = [ { start_bar = 36, end_bar = 97 } ]
+
+# Optional:
+# name     = "Interplay"   # default: name of this folder
+# folder   = "."           # default: this folder
+# output   = "out"         # default: ./out
+# fade_ms  = 30
+# mixdown  = true
+# beats_per_bar = 3
+# offset   = "0:02.3"

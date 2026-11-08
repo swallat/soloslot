@@ -78,8 +78,39 @@ def _solos(raw: dict[str, Any], name: str) -> tuple[Solo, ...]:
     return tuple(solos)
 
 
+def _song(raw: dict[str, Any], defaults: dict[str, Any], base: Path, *, single: bool) -> Song:
+    merged = {**defaults, **raw}
+    if single:
+        # One song per config file: the stems live next to the config by default.
+        folder = base / str(raw.get("folder", "."))
+        name = str(raw.get("name", folder.resolve().name))
+        output = base / str(merged.get("output", "out"))
+    else:
+        if "name" not in raw or "folder" not in raw:
+            raise ConfigError("every [[song]] needs 'name' and 'folder'")
+        name = str(raw["name"])
+        folder = base / str(raw["folder"])
+        output = base / str(merged.get("output", "out")) / name
+    return Song(
+        name=name,
+        folder=folder,
+        output=output,
+        solos=_solos(raw, name),
+        hear=tuple(merged.get("hear", ())),
+        skip=tuple(merged.get("skip", ())),
+        fade_ms=float(merged.get("fade_ms", 30)),
+        mixdown=bool(merged.get("mixdown", True)),
+    )
+
+
 def load_config(path: Path) -> list[Song]:
-    """Load all songs. Relative folders are resolved against the config file's directory."""
+    """Load the songs of a config file. Relative paths resolve against the config's directory.
+
+    Two layouts are accepted:
+    - several songs: `[[song]]` tables, each with `name` and `folder`;
+    - one song: `solos` (and optional `hear`, `bpm`, ...) at the top level. `folder` defaults
+      to the config's directory, `name` to that directory's name, and output goes to `out/`.
+    """
     try:
         with path.open("rb") as fh:
             cfg = tomllib.load(fh)
@@ -88,25 +119,12 @@ def load_config(path: Path) -> list[Song]:
     base = path.resolve().parent
     defaults = cfg.get("defaults", {})
     raw_songs = cfg.get("song", [])
-    if not raw_songs:
-        raise ConfigError(f"{path}: no [[song]] entries")
 
-    songs = []
-    for raw in raw_songs:
-        if "name" not in raw or "folder" not in raw:
-            raise ConfigError("every [[song]] needs 'name' and 'folder'")
-        name = str(raw["name"])
-        merged = {**defaults, **raw}
-        songs.append(
-            Song(
-                name=name,
-                folder=base / str(raw["folder"]),
-                output=base / str(merged.get("output", "out")),
-                solos=_solos(raw, name),
-                hear=tuple(merged.get("hear", ())),
-                skip=tuple(merged.get("skip", ())),
-                fade_ms=float(merged.get("fade_ms", 30)),
-                mixdown=bool(merged.get("mixdown", True)),
-            )
-        )
-    return songs
+    if raw_songs and "solos" in cfg:
+        raise ConfigError(f"{path}: use either [[song]] tables or a top-level 'solos', not both")
+    if raw_songs:
+        return [_song(raw, defaults, base, single=False) for raw in raw_songs]
+    if "solos" in cfg:
+        top = {k: v for k, v in cfg.items() if k != "defaults"}
+        return [_song(top, defaults, base, single=True)]
+    raise ConfigError(f"{path}: no [[song]] entries and no top-level 'solos'")

@@ -54,7 +54,7 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
         if not any(h.lower() in label for _, label in stems):
             log(f"  WARNING: 'hear' entry '{h}' matches no stem of this song")
 
-    out_dir = song.output / song.name
+    out_dir = song.output
     sample_rate = None
     results = []
     for f, label in stems:

@@ -87,3 +87,33 @@ def test_invalid_solos(tmp_path: Path, solos: str) -> None:
 def test_no_songs(tmp_path: Path) -> None:
     with pytest.raises(ConfigError):
         load_config(write(tmp_path, "[defaults]\n"))
+
+
+def test_single_song_layout_defaults(tmp_path: Path) -> None:
+    folder = tmp_path / "My Song"
+    folder.mkdir()
+    cfg = folder / "solo.toml"
+    cfg.write_text('hear = ["piano"]\nsolos = [ { start = "0:10", end = "0:20" } ]\n')
+    (song,) = load_config(cfg)
+    assert song.name == "My Song"
+    assert song.folder.resolve() == folder.resolve()
+    assert song.output == folder.resolve() / "out"
+    assert song.hear == ("piano",)
+
+
+def test_single_song_with_defaults_table(tmp_path: Path) -> None:
+    cfg = write(tmp_path, "[defaults]\nfade_ms = 7\n\nsolos = [ { start = 1, end = 2 } ]\n")
+    # `solos` after a table header belongs to [defaults]; hoist it to the top level instead
+    cfg.write_text("solos = [ { start = 1, end = 2 } ]\n\n[defaults]\nfade_ms = 7\n")
+    (song,) = load_config(cfg)
+    assert song.fade_ms == 7.0
+
+
+def test_mixing_song_tables_and_top_level_solos_is_an_error(tmp_path: Path) -> None:
+    cfg = write(
+        tmp_path,
+        'solos = [ { start = 1, end = 2 } ]\n\n[[song]]\nname = "A"\nfolder = "a"\n'
+        "solos = [ { start = 1, end = 2 } ]\n",
+    )
+    with pytest.raises(ConfigError):
+        load_config(cfg)

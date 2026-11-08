@@ -21,30 +21,55 @@ uv tool install .
 
 ## Use
 
-1. Put the stems of each song (WAV, FLAC or MP3) in their own folder, e.g. `stems/Interplay/`.
-2. Copy `songs.example.toml` to `songs.toml` and describe your songs:
+Put the stems of each song (WAV, FLAC or MP3) in their own folder, then describe the solo in
+a TOML file. There are two ways to organise that.
 
-   ```toml
-   [defaults]
-   hear = ["piano", "bass", "drums"]   # stems that stay audible in the solo
+### One config per song (run it inside the stems folder)
 
-   [[song]]
-   name   = "Interplay"
-   folder = "stems/Interplay"
-   bpm    = 113
-   solos  = [ { start_bar = 36, end_bar = 97 } ]
-   ```
+Save a `solo.toml` next to the stems of the song (see `solo.example.toml`):
 
-3. Run it:
+```toml
+hear  = ["piano", "bass", "drums"]   # stems that stay audible in the solo
+skip  = ["visualizer"]               # ignore the full mix
+solos = [ { start = "2:15", end = "3:40" } ]
+```
 
-   ```bash
-   stem-solo-gap songs.toml             # all songs
-   stem-solo-gap songs.toml --song Interplay
-   stem-solo-gap songs.toml --dry-run   # show what would happen, write nothing
-   ```
+and run the tool in that folder:
 
-Output goes to `out/<song>/`: every stem as WAV with the same name (MP3 input becomes 24 bit; WAV/FLAC keep their bit depth), plus
-`<song> - Backing Track.wav` (the sum of all processed stems, 24 bit).
+```bash
+cd stems/Interplay
+stem-solo-gap                  # uses ./solo.toml
+stem-solo-gap --dry-run        # show what would happen, write nothing
+```
+
+The song name defaults to the folder name, the result goes to `./out/`. You can also pass
+several configs at once, e.g. `stem-solo-gap stems/*/solo.toml`.
+
+### One config for many songs
+
+Copy `songs.example.toml` to `songs.toml` and list the songs as `[[song]]` tables:
+
+```toml
+[defaults]
+hear = ["piano", "bass", "drums"]   # shared by all songs
+
+[[song]]
+name   = "Interplay"
+folder = "stems/Interplay"
+bpm    = 113
+solos  = [ { start_bar = 36, end_bar = 97 } ]
+```
+
+```bash
+stem-solo-gap songs.toml                    # all songs
+stem-solo-gap songs.toml --song Interplay   # one song
+```
+
+Here the output goes to `out/<song>/`, next to the config file.
+
+In both layouts every stem is written as WAV with the same name (MP3 input becomes 24 bit;
+WAV/FLAC keep their bit depth), plus `<song> - Backing Track.wav` (the sum of all processed
+stems, 24 bit). The `out/` folder is not read as input on the next run.
 
 ### Config
 

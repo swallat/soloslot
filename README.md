@@ -109,6 +109,17 @@ soloslot song.mp3 --solo 2:15-3:40 --mute guitar --dry-run
 | `-o, --output DIR` | Output folder. Default: `out/<song>/` next to the song. |
 | `--dry-run` | Show what would happen and write nothing. |
 
+## Desktop window (optional)
+
+```
+uv tool install 'soloslot[gui,separate]'
+soloslot-gui
+```
+
+Choose a song (or a folder with stems), enter the solo regions (`2:15-3:40`, one per line),
+tick the stems to mute, pick an output folder and press the button. The console output
+(including Demucs progress) is under the collapsible **Details** section.
+
 ## Working with stems you already have
 
 Put each song's stems (WAV, FLAC or MP3) in their own folder and describe the solo in a

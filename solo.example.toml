@@ -30,5 +30,6 @@ solos = [ { start = "2:15", end = "3:40" } ]
 # format   = "wav"         # or "flac"
 # fade_ms  = 30
 # mixdown  = true
+# stems    = false   # only the backing track, no individual stems
 # beats_per_bar = 3
 # offset   = "0:02.3"

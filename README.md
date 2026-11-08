@@ -58,6 +58,7 @@ soloslot song.mp3 --solo 2:15-3:40 --mute guitar --dry-run  # show what would ha
 - `--model`: the Demucs model, default `htdemucs_6s`, which splits into **drums, bass, guitar,
   piano, vocals and other**. `htdemucs` and `htdemucs_ft` give drums, bass, vocals and other,
   and are a bit cleaner for those.
+- `--backing-only`: write only the backing track, not the individual stems.
 - `--format flac`, `-o/--output DIR`: see below. The default output is `out/<song>/` next to the
   song.
 
@@ -137,6 +138,7 @@ also get `<song> - Backing Track.wav` or `.flac` (the sum of all processed stems
 - **`solos`**: one or more solo regions, see below.
 - **`format`**: output format, `"wav"` (default) or `"flac"`. Applies to the stems and the backing
   track. FLAC is lossless and smaller; float or 32 bit input becomes 24 bit there.
+- **`stems`**: set `stems = false` to write only the backing track (default `true`).
 - **`fade_ms`**, **`mixdown`**, **`output`**: see `songs.example.toml`.
 - Defaults live in `[defaults]` and can be overridden per song.
 - Relative paths are resolved against the directory of the config file.

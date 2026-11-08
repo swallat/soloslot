@@ -35,6 +35,7 @@ class Song:
     skip: tuple[str, ...] = ()
     fade_ms: float = 30.0
     mixdown: bool = True
+    write_stems: bool = True  # False: only the backing track is written
     format: str = "wav"
     # A full song to split into stems first; `folder` then holds the separated stems.
     input: Path | None = None
@@ -130,6 +131,9 @@ def _song(raw: dict[str, Any], defaults: dict[str, Any], base: Path, *, single: 
         hear = ()
     elif hear and mute:
         raise ConfigError(f"{name}: [defaults] has both 'hear' and 'mute'")
+    mixdown, write_stems = bool(merged.get("mixdown", True)), bool(merged.get("stems", True))
+    if not mixdown and not write_stems:
+        raise ConfigError(f"{name}: 'mixdown' and 'stems' are both off, nothing would be written")
     model = str(merged.get("model", DEFAULT_MODEL))
     if source is not None:
         # Separated stems are cached in the output folder and reused on the next run.
@@ -143,7 +147,8 @@ def _song(raw: dict[str, Any], defaults: dict[str, Any], base: Path, *, single: 
         mute=mute,
         skip=_names(merged, "skip", name),
         fade_ms=float(merged.get("fade_ms", 30)),
-        mixdown=bool(merged.get("mixdown", True)),
+        mixdown=mixdown,
+        write_stems=write_stems,
         format=fmt,
         input=source,
         model=model,

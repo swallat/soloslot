@@ -66,6 +66,11 @@ def _solo(value: str) -> dict[str, str]:
     default=None,
     help="Output folder for an audio file (default: out/<song>/ next to it).",
 )
+@click.option(
+    "--backing-only",
+    is_flag=True,
+    help="Write only the backing track, not the individual stems.",
+)
 @click.option("--dry-run", is_flag=True, help="Show what would happen, write nothing.")
 @click.version_option(__version__, prog_name="soloslot")
 def main(
@@ -77,6 +82,7 @@ def main(
     model: str | None,
     fmt: str | None,
     output: Path | None,
+    backing_only: bool,
     dry_run: bool,
 ) -> None:
     """Mute instruments in a solo section and build a play-along backing track.
@@ -95,11 +101,11 @@ def main(
     """
     configs = [p for p in inputs if p.suffix.lower() == ".toml"]
     audio = [p for p in inputs if p.suffix.lower() != ".toml"]
-    song_options = solos or hear or mute or model or fmt or output
+    song_options = solos or hear or mute or model or fmt or output or backing_only
     if song_options and not audio:
         raise click.UsageError(
-            "--solo, --hear, --mute, --model, --format and --output apply to audio files; "
-            "put these settings in the config instead"
+            "--solo, --hear, --mute, --model, --format, --output and --backing-only apply to "
+            "audio files; put these settings in the config instead"
         )
     if not inputs:
         default = Path(DEFAULT_CONFIG)
@@ -122,6 +128,8 @@ def main(
             songs.extend(load_config(config))
         regions = [_solo(s) for s in solos]
         options = {k: v for k, v in (("model", model), ("format", fmt)) if v}
+        if backing_only:
+            options["stems"] = False
         songs.extend(
             song_from_audio(
                 path, regions, hear=_split(hear), mute=_split(mute), output=output, **options

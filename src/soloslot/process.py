@@ -116,7 +116,7 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
         result = audio if audible else apply_gaps(audio, sr, song.solos, song.fade_ms)
         log(f"  {'stays audible' if audible else 'silent in solo'}: {label}")
         results.append(result)
-        if not dry_run:
+        if song.write_stems and not dry_run:
             out_dir.mkdir(parents=True, exist_ok=True)
             sf.write(
                 out_dir / f"{f.stem}.{song.format}",
@@ -130,6 +130,7 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
         if gain_db:
             log(f"  Mix would clip, lowered by {-gain_db:.1f} dB")
         if not dry_run:
+            out_dir.mkdir(parents=True, exist_ok=True)
             path = out_dir / f"{song.name} - Backing Track.{song.format}"
             sf.write(path, mix, sample_rate, subtype="PCM_24")
             log(f"  written: {path}")

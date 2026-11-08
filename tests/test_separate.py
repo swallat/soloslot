@@ -201,3 +201,22 @@ def test_invalid_input_configs(tmp_path: Path, body: str) -> None:
     cfg.write_text(body + "solos = [ { start = 1, end = 2 } ]\n", encoding="utf-8")
     with pytest.raises(ConfigError):
         load_config(cfg)
+
+
+def test_backing_only_writes_just_the_backing_track(song: Path, calls: list[Path]) -> None:
+    result = run(song, "--solo", "2-6", "--mute", "guitar", "--backing-only")
+    assert result.exit_code == 0, result.output
+    out = song.parent / "out" / "Song"
+    assert sorted(p.name for p in out.glob("*.wav")) == ["Song - Backing Track.wav"]
+    assert abs(level(out / "Song - Backing Track.wav", 3, 5) - 0.3) < 0.01
+    assert abs(level(out / "Song - Backing Track.wav", 7, 9) - 0.4) < 0.01
+
+
+def test_config_stems_off_and_nothing_to_write(tmp_path: Path) -> None:
+    cfg = tmp_path / "solo.toml"
+    body = "solos = [ { start = 1, end = 2 } ]\nstems = false\n"
+    cfg.write_text(body, encoding="utf-8")
+    assert load_config(cfg)[0].write_stems is False
+    cfg.write_text(body + "mixdown = false\n", encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_config(cfg)

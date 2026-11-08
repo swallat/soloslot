@@ -16,6 +16,7 @@ All notable changes to this project are documented here. The format follows
 - Command line mode for one song: `soloslot song.mp3 --solo 2:15-3:40 --mute guitar`, with
   `--solo` (repeatable), `--hear`, `--mute`, `--model`, `--format` and `--output`.
 - `mute` as the opposite of `hear`: name the stems to silence in the solo, the rest stays.
+- `--backing-only` / `stems = false` to write only the backing track.
 - Separated stems are cached in the output folder and reused until the input file changes.
 
 ## [0.1.0] - 2026-11-08

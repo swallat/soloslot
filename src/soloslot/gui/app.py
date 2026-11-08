@@ -9,13 +9,14 @@ from pathlib import Path
 
 try:
     from PySide6.QtCore import QObject, Qt, QThread, QUrl, Signal
-    from PySide6.QtGui import QDesktopServices
+    from PySide6.QtGui import QAction, QDesktopServices
     from PySide6.QtWidgets import (
         QApplication,
         QCheckBox,
         QComboBox,
         QFileDialog,
         QFormLayout,
+        QFrame,
         QGroupBox,
         QHBoxLayout,
         QLabel,
@@ -34,6 +35,8 @@ except ImportError:  # pragma: no cover
 
 from soloslot import __version__
 from soloslot.config import OUTPUT_FORMATS, ConfigError
+from soloslot.gui.about import show_about
+from soloslot.gui.branding import apply_style, mark_pixmap
 from soloslot.gui.model import DEFAULT_STEMS, Form, build_song, stems_of
 from soloslot.process import process_song
 from soloslot.update import Update, UpdateError, check_for_update, download_update
@@ -100,7 +103,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle(f"soloslot {__version__}")
-        self.resize(560, 640)
+        self.resize(600, 700)
         self._thread: QThread | None = None
         self._worker: Worker | None = None
         self._checks: dict[str, QCheckBox] = {}
@@ -108,9 +111,35 @@ class MainWindow(QMainWindow):
         root = QWidget()
         self.setCentralWidget(root)
         layout = QVBoxLayout(root)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(12)
+
+        help_menu = self.menuBar().addMenu("&Help")
+        about = QAction("&About soloslot…", self)
+        about.setMenuRole(QAction.MenuRole.AboutRole)
+        about.triggered.connect(lambda: show_about(self))
+        help_menu.addAction(about)
+
+        # Header: logo and name
+        header = QHBoxLayout()
+        header.setSpacing(12)
+        self.logo = QLabel()
+        self.logo.setPixmap(mark_pixmap(56))
+        header.addWidget(self.logo)
+        names = QVBoxLayout()
+        names.setSpacing(0)
+        title = QLabel("soloslot")
+        title.setObjectName("title")
+        tagline = QLabel("Make room for your solo.")
+        tagline.setObjectName("tagline")
+        names.addWidget(title)
+        names.addWidget(tagline)
+        header.addLayout(names, 1)
+        layout.addLayout(header)
 
         # Update notice (hidden until a newer release is found)
-        self.banner = QWidget()
+        self.banner = QFrame()
+        self.banner.setObjectName("banner")
         banner_row = QHBoxLayout(self.banner)
         banner_row.setContentsMargins(0, 0, 0, 0)
         self.banner_text = QLabel()
@@ -125,6 +154,7 @@ class MainWindow(QMainWindow):
         self._tasks: list[tuple[QThread, Task]] = []
 
         # Input
+        layout.addWidget(self._caption("Song or stems"))
         self.source = QLineEdit()
         self.source.setPlaceholderText("Song (MP3/WAV/FLAC) or folder with stems")
         self.source.editingFinished.connect(self._refresh_stems)
@@ -137,9 +167,10 @@ class MainWindow(QMainWindow):
         layout.addLayout(row)
 
         # Solo regions
+        layout.addWidget(self._caption("Solo regions"))
         self.solos = QPlainTextEdit()
         self.solos.setPlaceholderText("One solo per line: START-END, e.g. 2:15-3:40")
-        self.solos.setFixedHeight(70)
+        self.solos.setFixedHeight(84)
         layout.addWidget(self.solos)
 
         # Stems
@@ -167,6 +198,9 @@ class MainWindow(QMainWindow):
 
         # Run
         self.start = QPushButton("Create backing track")
+        self.start.setObjectName("primary")
+        self.start.setDefault(True)
+        self.start.setCursor(Qt.CursorShape.PointingHandCursor)
         self.start.clicked.connect(self._start)
         layout.addWidget(self.start)
         self.progress = QProgressBar()
@@ -188,6 +222,12 @@ class MainWindow(QMainWindow):
         self.log.setVisible(False)
         layout.addWidget(self.log, 1)
         layout.addStretch(0)
+
+    @staticmethod
+    def _caption(text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("caption")
+        return label
 
     # -- updates
     def _run_task(self, fn, slot) -> None:
@@ -330,6 +370,10 @@ class MainWindow(QMainWindow):
 
 def main() -> None:
     app = QApplication(sys.argv)
+    app.setApplicationName("soloslot")
+    app.setApplicationVersion(__version__)
+    app.setDesktopFileName("soloslot")
+    apply_style(app)
     window = MainWindow()
     window.show()
     window.check_updates()

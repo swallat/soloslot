@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Window and installers carry the soloslot logo: header, window and taskbar icon, Windows `.ico`,
+  macOS `.icns`, AppImage icon.
+- Help > About dialog with version, author, links and a Licenses tab. License notices for Qt,
+  PySide6, Demucs, PyTorch and the other dependencies (`THIRD_PARTY_NOTICES.md`) ship inside the
+  app and next to it in the Windows installer and the AppImage.
+
+### Changed
+- Window design follows the logo: amber accent for the main action, focus and progress,
+  Fusion style for the same look on every platform, labelled inputs, larger click targets.
+
 ## [0.2.0] - 2026-11-08
 
 ### Added

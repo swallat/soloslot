@@ -23,7 +23,8 @@ from pathlib import Path
 from soloslot.update import Fetch, UpdateError, expected_checksum, fetch_bytes
 
 UV_VERSION = "0.13.5"  # keep in step with mise.toml / CI
-PYTHON_VERSION = "3.12"  # what the pinned PyTorch wheels support
+PYTHON_VERSION = "3.13"  # newest with wheels for torch, lameenc and sphn on all supported systems
+INTEL_MAC_PYTHON_VERSION = "3.12"  # demucs needs torch<2.3 on Intel Macs; no wheels beyond 3.12
 TORCH_CPU_INDEX = "https://download.pytorch.org/whl/cpu"
 
 Log = Callable[[str], None]
@@ -80,6 +81,14 @@ def _machine() -> str:
     import platform
 
     return platform.machine()
+
+
+def python_version(platform: str | None = None, machine: str | None = None) -> str:
+    platform = platform or sys.platform
+    machine = (machine or _machine()).lower()
+    if platform == "darwin" and machine not in ("arm64", "aarch64"):
+        return INTEL_MAC_PYTHON_VERSION
+    return PYTHON_VERSION
 
 
 def ensure_uv(
@@ -147,7 +156,33 @@ def child_env(environ: dict[str, str] | None = None) -> dict[str, str]:
     return env
 
 
-def stream(cmd: Sequence[str | Path], log: Log, *, cwd: Path | None = None) -> int:
+def uv_env(environ: dict[str, str] | None = None, root: Path | None = None) -> dict[str, str]:
+    """child_env() plus settings that isolate uv from the user's own Python/uv setup.
+
+    uv would otherwise find e.g. a scoop/pyenv/system Python (which may be unusable, like a
+    junction on Windows) or read the user's uv.toml. Python and cache live in our data folder.
+    """
+    base = root or data_dir()
+    env = child_env(environ)
+    for var in ("UV_PYTHON", "VIRTUAL_ENV", "CONDA_PREFIX", "UV_PROJECT_ENVIRONMENT"):
+        env.pop(var, None)
+    env.update(
+        UV_PYTHON_INSTALL_DIR=str(base / "python"),
+        UV_CACHE_DIR=str(base / "uv-cache"),
+        UV_PYTHON_PREFERENCE="only-managed",
+        UV_MANAGED_PYTHON="1",
+        UV_NO_CONFIG="1",
+    )
+    return env
+
+
+def stream(
+    cmd: Sequence[str | Path],
+    log: Log,
+    *,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> int:
     """Run `cmd`, forwarding each output line (progress bars included) to `log`."""
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)  # no console window on Windows
     with subprocess.Popen(
@@ -157,7 +192,7 @@ def stream(cmd: Sequence[str | Path], log: Log, *, cwd: Path | None = None) -> i
         text=True,  # universal newlines: \r progress updates become lines too
         encoding="utf-8",
         errors="replace",
-        env=child_env(),
+        env=env if env is not None else child_env(),
         cwd=cwd,
         creationflags=flags,
     ) as proc:
@@ -183,11 +218,12 @@ def install_separation(
     with tempfile.TemporaryDirectory() as tmp:
         uv = ensure_uv(Path(tmp), fetch=fetch, log=log)
         python = env_python(root)
+        py_version = python_version()
         torch = ["torch", "torchaudio", "--index-url", TORCH_CPU_INDEX]
         steps: list[tuple[str, list[str | Path]]] = [
             (
-                f"Creating Python {PYTHON_VERSION} environment ...",
-                [uv, "venv", "--python", PYTHON_VERSION, "--clear", root],
+                f"Creating Python {py_version} environment ...",
+                [uv, "venv", "--python", py_version, "--clear", root],
             )
         ]
         if sys.platform.startswith("linux"):  # the default Linux wheels bundle CUDA (GBs)
@@ -204,9 +240,10 @@ def install_separation(
             )
         )
         root.parent.mkdir(parents=True, exist_ok=True)
+        isolated = uv_env(root=root.parent)
         for message, cmd in steps:
             log(message)
-            if run(cmd, log) != 0:
+            if run(cmd, log, env=isolated) != 0:
                 raise SetupError(f"setup failed in step: {message} See Details for the output.")
     root.mkdir(parents=True, exist_ok=True)
     (root / ".installed").write_text(version, encoding="utf-8")

@@ -18,6 +18,7 @@ from soloslot.bootstrap import (
     run_separation,
     stream,
     uv_asset,
+    uv_env,
 )
 
 
@@ -86,8 +87,11 @@ def test_install_separation_runs_steps(tmp_path, monkeypatch):
     monkeypatch.setattr(bootstrap, "ensure_uv", lambda folder, **kw: Path("uv"))
     calls = []
 
-    def run(cmd, log):
+    envs = []
+
+    def run(cmd, log, env=None):
         calls.append([str(c) for c in cmd])
+        envs.append(env)
         return 0
 
     root = tmp_path / "env"
@@ -95,13 +99,15 @@ def test_install_separation_runs_steps(tmp_path, monkeypatch):
     assert calls[0][1:3] == ["venv", "--python"]
     assert any("soloslot[separate]==1.2.3" in c for call in calls for c in call)
     assert (root / ".installed").read_text() == "1.2.3"
+    assert all(e["UV_NO_CONFIG"] == "1" for e in envs)
+    assert envs[0]["UV_PYTHON_INSTALL_DIR"] == str(tmp_path / "python")
 
 
 def test_install_separation_reports_failure(tmp_path, monkeypatch):
     monkeypatch.setattr(bootstrap, "ensure_uv", lambda folder, **kw: Path("uv"))
     with pytest.raises(SetupError, match="failed"):
         install_separation(
-            "1.2.3", root=tmp_path / "env", log=lambda _: None, run=lambda cmd, log: 1
+            "1.2.3", root=tmp_path / "env", log=lambda _: None, run=lambda cmd, log, env=None: 1
         )
     assert not (tmp_path / "env" / ".installed").exists()
 
@@ -127,3 +133,18 @@ def test_child_env_undoes_bundle_changes():
     assert "PYTHONHOME" not in env
     assert env["PATH"] == "/bin"
     assert env["PYTHONUTF8"] == "1"
+
+
+def test_uv_env_isolates_user_python(tmp_path):
+    env = uv_env({"UV_PYTHON": "x", "VIRTUAL_ENV": "v", "PATH": "/bin"}, root=tmp_path)
+    assert "UV_PYTHON" not in env and "VIRTUAL_ENV" not in env
+    assert env["UV_PYTHON_PREFERENCE"] == "only-managed"
+    assert env["UV_MANAGED_PYTHON"] == "1"
+    assert env["UV_CACHE_DIR"] == str(tmp_path / "uv-cache")
+
+
+def test_python_version():
+    assert bootstrap.python_version("win32", "AMD64") == "3.13"
+    assert bootstrap.python_version("linux", "x86_64") == "3.13"
+    assert bootstrap.python_version("darwin", "arm64") == "3.13"
+    assert bootstrap.python_version("darwin", "x86_64") == "3.12"

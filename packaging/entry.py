@@ -12,6 +12,7 @@ if "--version" in sys.argv:
 if "--selftest" in sys.argv:
     # CI smoke test: build the window without showing it.
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    import sounddevice  # noqa: F401  (fails if PortAudio is not bundled)
     import soundfile
     from PySide6.QtWidgets import QApplication
 

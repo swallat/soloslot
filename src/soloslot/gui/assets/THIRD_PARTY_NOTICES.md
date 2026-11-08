@@ -36,6 +36,12 @@ Castro Lopo and contributors, under the **GNU Lesser General Public License v2.1
 (<https://www.gnu.org/licenses/lgpl-2.1.html>). libsndfile is a separate shared library in the
 app folder and can be replaced.
 
+### sounddevice and PortAudio · MIT
+
+python-sounddevice, copyright (c) Matthias Geier: <https://github.com/spatialaudio/python-sounddevice>.
+It plays the preview through PortAudio (<http://www.portaudio.com>), copyright (c) Ross Bencina and
+Phil Burk, under the MIT license. PortAudio is a separate shared library in the app folder.
+
 ### CFFI · MIT
 
 Copyright (c) Armin Rigo, Maciej Fijalkowski. <https://cffi.readthedocs.io>

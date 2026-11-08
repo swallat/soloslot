@@ -38,10 +38,13 @@ jobs:
         run: echo "version=$(uv run --no-project python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")" >> "$GITHUB_OUTPUT"
       - name: Linux system libraries for Qt
         if: matrix.name == 'linux'
-        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 libxcb-cursor0
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 libxcb-cursor0 libportaudio2
       - name: Build with PyInstaller
         shell: bash
         run: packaging/build.sh
+      - name: Bundle PortAudio (Linux)
+        if: matrix.name == 'linux'
+        run: cp -L "$(ldconfig -p | awk '/libportaudio\.so\.2 /{print $NF; exit}')" dist/soloslot/_internal/
       - name: Self test
         shell: bash
         run: |

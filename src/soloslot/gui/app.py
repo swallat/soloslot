@@ -38,6 +38,8 @@ from soloslot.config import OUTPUT_FORMATS, ConfigError
 from soloslot.gui.about import show_about
 from soloslot.gui.branding import app_icon, apply_style, mark_pixmap
 from soloslot.gui.model import DEFAULT_STEMS, Form, build_song, cli_args, stems_of
+from soloslot.gui.playerpanel import PlayerPanel
+from soloslot.gui.regions import load_stems, slots_to_text, text_to_slots
 from soloslot.process import process_song
 from soloslot.update import Update, UpdateError, check_for_update, download_update
 
@@ -104,10 +106,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"soloslot {__version__}")
         self.setWindowIcon(app_icon())  # title bar and taskbar, also on Windows
-        self.resize(600, 700)
+        self.resize(720, 860)
         self._thread: QThread | None = None
         self._worker: Worker | None = None
         self._checks: dict[str, QCheckBox] = {}
+        self._preview_path: Path | None = None
 
         root = QWidget()
         self.setCentralWidget(root)
@@ -175,7 +178,14 @@ class MainWindow(QMainWindow):
         self.solos = QPlainTextEdit()
         self.solos.setPlaceholderText("One solo per line: START-END, e.g. 2:15-3:40")
         self.solos.setFixedHeight(84)
+        self.solos.textChanged.connect(self._solos_typed)
         layout.addWidget(self.solos)
+
+        # Player: draw the solo slots on the waveform and listen to the result
+        layout.addWidget(self._caption("Player"))
+        self.panel = PlayerPanel()
+        self.panel.slotsChanged.connect(self._slots_drawn)
+        layout.addWidget(self.panel)
 
         # Stems
         self.stem_box = QGroupBox("Mute in the solo")
@@ -318,6 +328,7 @@ class MainWindow(QMainWindow):
         for name in names:
             check = QCheckBox(name)
             check.setChecked(name in old)
+            check.toggled.connect(lambda _on: self.panel.set_muted(self._muted()))
             self._checks[name] = check
             self.stem_layout.addWidget(check)
 
@@ -325,6 +336,36 @@ class MainWindow(QMainWindow):
         text = self.source.text().strip()
         names = stems_of(Path(text)) if text and Path(text).exists() else DEFAULT_STEMS
         self._set_stems(names or DEFAULT_STEMS)
+        self._load_preview(Path(text) if text and Path(text).exists() else None)
+
+    def _load_preview(self, path: Path | None) -> None:
+        if path is None:
+            self.panel.clear()
+            return
+        self.panel.set_loading()
+        self._preview_path = path
+        self._run_task(lambda: load_stems(path), lambda r, e, p=path: self._preview_loaded(p, r, e))
+
+    def _preview_loaded(self, path: Path, stems, error: str) -> None:
+        if path != self._preview_path:
+            return  # the user picked something else meanwhile
+        if error or stems is None:
+            self.panel.clear(f"Cannot show waveform: {error}")
+            return
+        self.panel.set_stems(stems)
+        self.panel.set_slots(text_to_slots(self.solos.toPlainText()))
+        self.panel.set_muted(self._muted())
+
+    def _muted(self) -> tuple[str, ...]:
+        return tuple(n for n, c in self._checks.items() if c.isChecked())
+
+    def _solos_typed(self) -> None:
+        self.panel.set_slots(text_to_slots(self.solos.toPlainText()))
+
+    def _slots_drawn(self, slots: list) -> None:
+        self.solos.blockSignals(True)
+        self.solos.setPlainText(slots_to_text(slots))
+        self.solos.blockSignals(False)
 
     def _toggle_log(self, on: bool) -> None:
         self.toggle.setArrowType(Qt.ArrowType.DownArrow if on else Qt.ArrowType.RightArrow)
@@ -337,7 +378,7 @@ class MainWindow(QMainWindow):
         return Form(
             source=Path(text) if text else None,
             solos=self.solos.toPlainText(),
-            muted=tuple(n for n, c in self._checks.items() if c.isChecked()),
+            muted=self._muted(),
             output=Path(out) if out else None,
             fmt=self.fmt.currentText(),
             backing_only=self.backing_only.isChecked(),
@@ -401,6 +442,7 @@ class MainWindow(QMainWindow):
             self.log.appendPlainText("\nDone.")
 
     def closeEvent(self, event) -> None:
+        self.panel.player.stop()
         # A running job cannot be cancelled safely; destroying its thread would crash.
         for thread, _ in self._tasks:
             thread.quit()

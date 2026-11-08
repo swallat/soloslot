@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from soloslot.separate import DEFAULT_MODEL
+
 OUTPUT_FORMATS = ("wav", "flac")
 
 
@@ -29,10 +31,15 @@ class Song:
     output: Path
     solos: tuple[Solo, ...]
     hear: tuple[str, ...] = ()
+    mute: tuple[str, ...] = ()
     skip: tuple[str, ...] = ()
     fade_ms: float = 30.0
     mixdown: bool = True
+    write_stems: bool = True  # False: only the backing track is written
     format: str = "wav"
+    # A full song to split into stems first; `folder` then holds the separated stems.
+    input: Path | None = None
+    model: str = DEFAULT_MODEL
     notes: list[str] = field(default_factory=list, compare=False)
 
 
@@ -81,33 +88,94 @@ def _solos(raw: dict[str, Any], name: str) -> tuple[Solo, ...]:
     return tuple(solos)
 
 
+def _names(merged: dict[str, Any], key: str, name: str) -> tuple[str, ...]:
+    value = merged.get(key, ())
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list | tuple) or not all(isinstance(v, str) for v in value):
+        raise ConfigError(f"{name}: '{key}' must be a list of stem names")
+    return tuple(value)
+
+
 def _song(raw: dict[str, Any], defaults: dict[str, Any], base: Path, *, single: bool) -> Song:
     merged = {**defaults, **raw}
+    if "input" in raw and "folder" in raw:
+        raise ConfigError(
+            f"{raw.get('name', raw['input'])}: use either 'input' (a song) or 'folder' (stems)"
+        )
+    source = base / str(raw["input"]) if "input" in raw else None
     if single:
         # One song per config file: the stems live next to the config by default.
         folder = base / str(raw.get("folder", "."))
-        name = str(raw.get("name", folder.resolve().name))
+        default_name = source.stem if source else folder.resolve().name
+        name = str(raw.get("name", default_name))
         output = base / str(merged.get("output", "out"))
     else:
-        if "name" not in raw or "folder" not in raw:
-            raise ConfigError("every [[song]] needs 'name' and 'folder'")
-        name = str(raw["name"])
-        folder = base / str(raw["folder"])
+        if "name" not in raw and source is None:
+            raise ConfigError("every [[song]] needs 'name' and 'folder' (or 'input')")
+        if "folder" not in raw and source is None:
+            raise ConfigError(f"{raw['name']}: [[song]] needs 'folder' or 'input'")
+        name = str(raw.get("name", source.stem if source else ""))
+        folder = base / str(raw.get("folder", "."))
         output = base / str(merged.get("output", "out")) / name
     fmt = str(merged.get("format", "wav")).lower().lstrip(".")
     if fmt not in OUTPUT_FORMATS:
         raise ConfigError(f"{name}: format must be one of {', '.join(OUTPUT_FORMATS)}, not {fmt!r}")
+    hear, mute = _names(merged, "hear", name), _names(merged, "mute", name)
+    if "hear" in raw and "mute" in raw:
+        raise ConfigError(f"{name}: use either 'hear' (keep) or 'mute' (remove), not both")
+    # A song-level choice replaces the other one from [defaults].
+    if "hear" in raw:
+        mute = ()
+    elif "mute" in raw:
+        hear = ()
+    elif hear and mute:
+        raise ConfigError(f"{name}: [defaults] has both 'hear' and 'mute'")
+    mixdown, write_stems = bool(merged.get("mixdown", True)), bool(merged.get("stems", True))
+    if not mixdown and not write_stems:
+        raise ConfigError(f"{name}: 'mixdown' and 'stems' are both off, nothing would be written")
+    model = str(merged.get("model", DEFAULT_MODEL))
+    if source is not None:
+        # Separated stems are cached in the output folder and reused on the next run.
+        folder = output / "separated" / model
     return Song(
         name=name,
         folder=folder,
         output=output,
         solos=_solos(raw, name),
-        hear=tuple(merged.get("hear", ())),
-        skip=tuple(merged.get("skip", ())),
+        hear=hear,
+        mute=mute,
+        skip=_names(merged, "skip", name),
         fade_ms=float(merged.get("fade_ms", 30)),
-        mixdown=bool(merged.get("mixdown", True)),
+        mixdown=mixdown,
+        write_stems=write_stems,
         format=fmt,
+        input=source,
+        model=model,
     )
+
+
+def song_from_audio(
+    path: Path,
+    solos: list[dict[str, Any]],
+    *,
+    hear: tuple[str, ...] = (),
+    mute: tuple[str, ...] = (),
+    output: Path | None = None,
+    **options: Any,
+) -> Song:
+    """A song to separate, given on the command line instead of in a config file.
+
+    The output defaults to `out/<song>/` next to the audio file.
+    """
+    path = path.resolve()
+    raw: dict[str, Any] = {"input": path.name, "solos": solos, **options}
+    if hear:
+        raw["hear"] = list(hear)
+    if mute:
+        raw["mute"] = list(mute)
+    raw["output"] = str(output.resolve() if output else path.parent / "out" / path.stem)
+    return _song(raw, {}, path.parent, single=True)
 
 
 def load_config(path: Path) -> list[Song]:
@@ -117,6 +185,9 @@ def load_config(path: Path) -> list[Song]:
     - several songs: `[[song]]` tables, each with `name` and `folder`;
     - one song: `solos` (and optional `hear`, `bpm`, ...) at the top level. `folder` defaults
       to the config's directory, `name` to that directory's name, and output goes to `out/`.
+
+    Instead of `folder`, a song can name a full recording as `input`; it is split into stems
+    first (see `separate.py`).
     """
     try:
         with path.open("rb") as fh:

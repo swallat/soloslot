@@ -1,4 +1,4 @@
-# Example config for stem-solo-gap.
+# Example config for soloslot.
 # Relative paths are resolved against the directory of this file.
 #
 # "hear" = stems that stay AUDIBLE in the solo; every other stem is silenced there.
@@ -13,6 +13,7 @@ hear    = ["piano", "bass", "drums"]    # still audible in the solo
 skip    = ["visualizer"]                # ignore these files/stems (e.g. the full mix)
 fade_ms = 30                            # fade at the cut edges
 mixdown = true                          # also write "<song> - Backing Track"
+stems   = true                          # false: write only the backing track
 format  = "wav"                         # output format: "wav" or "flac"
 
 [[song]]
@@ -33,3 +34,11 @@ solos  = [ { start_bar = 36, end_bar = 97 } ]
 #   beats_per_bar = 3        # for 3/4 or 6/8
 #   offset = "0:02.3"        # seconds before bar 1 if the file has a lead-in
 #   mixdown = false
+
+# A full song instead of a stems folder: split with Demucs first (needs the 'separate' extra).
+# The name defaults to the file name; "mute" silences only the named stems in the solo.
+# [[song]]
+# input  = "songs/Blue Bossa.mp3"
+# mute   = ["guitar"]                   # replaces defaults.hear for this song
+# model  = "htdemucs_6s"                # drums, bass, guitar, piano, vocals, other
+# solos  = [ { start = "1:05", end = "2:40" } ]

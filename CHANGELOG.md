@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Renamed from stem-solo-gap to **soloslot** (package, command and module).
+
+### Added
+- Stem separation with Demucs (optional `separate` extra): give a full song (MP3, WAV, FLAC,
+  ...) instead of a stems folder, on the command line or as `input` in the config. Default
+  model `htdemucs_6s` (drums, bass, guitar, piano, vocals, other); choose another with `model`.
+- Command line mode for one song: `soloslot song.mp3 --solo 2:15-3:40 --mute guitar`, with
+  `--solo` (repeatable), `--hear`, `--mute`, `--model`, `--format` and `--output`.
+- `mute` as the opposite of `hear`: name the stems to silence in the solo, the rest stays.
+- `--backing-only` / `stems = false` to write only the backing track.
+- Separated stems are cached in the output folder and reused until the input file changes.
+
 ## [0.1.0] - 2026-11-08
 
 ### Added
@@ -20,5 +33,5 @@ All notable changes to this project are documented here. The format follows
 - `--song` to pick a song and `--dry-run` to preview.
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
-[Unreleased]: https://github.com/swallat/stem-solo-gap/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/swallat/stem-solo-gap/commits/main
+[Unreleased]: https://github.com/swallat/soloslot/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/swallat/soloslot/commits/main

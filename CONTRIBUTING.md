@@ -38,3 +38,11 @@ Without mise, `uv sync` and `uv run pytest` work the same way.
 5. Open the pull request and describe what changed and why.
 
 By contributing you agree that your contribution is licensed under the [MIT License](LICENSE).
+
+## Releasing
+
+1. Move the `Unreleased` entries in `CHANGELOG.md` under a new version heading and bump
+   `version` in `pyproject.toml`.
+2. Merge that change to `main`, then tag it: `git tag v0.1.0 && git push origin v0.1.0`.
+3. The `Release` workflow checks that the tag matches the version, runs the tests, builds the
+   package, publishes to PyPI via Trusted Publishing and creates the GitHub release.

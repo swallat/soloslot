@@ -14,7 +14,7 @@ skip    = ["visualizer"]                # ignore these files/stems (e.g. the ful
 fade_ms = 30                            # fade at the cut edges
 mixdown = true                          # also write "<song> - Backing Track"
 stems   = true                          # false: write only the backing track
-format  = "wav"                         # output format: "wav" or "flac"
+format  = "wav"                         # output format: "wav", "flac" or "mp3"
 
 [[song]]
 name   = "Interplay"

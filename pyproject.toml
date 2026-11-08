@@ -17,7 +17,7 @@ classifiers = [
 dependencies = [
   "click>=8.1",
   "numpy>=1.26",  # demucs needs numpy<2 on Intel Macs
-  "soundfile>=0.12",
+  "soundfile>=0.13"  # wheels bundle libsndfile 1.2 with MP3 encoding,
 ]
 
 [project.optional-dependencies]

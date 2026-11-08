@@ -47,8 +47,8 @@ That is the whole workflow: one song in, one backing track out.
   output folder, and soloslot refuses to write over your input.
 - **Private and offline.** Everything runs on your computer. Your recordings are never uploaded.
   Only the Demucs model is downloaded, once.
-- **Lossless output.** WAV or FLAC, with the bit depth of your source preserved (MP3 input is
-  written as 24 bit).
+- **Lossless or MP3 output.** WAV or FLAC keep the bit depth of your source (MP3 input is
+  written as 24 bit); MP3 is there for small files you can put on a phone.
 - **Plain-text config for repeat use.** Describe a song, or a whole repertoire, in a small TOML
   file. Give solos as timestamps or as bar numbers.
 
@@ -105,7 +105,7 @@ soloslot song.mp3 --solo 2:15-3:40 --mute guitar --dry-run
 | `--hear STEMS` | The opposite: only these stems stay in the solo. Use one of the two. |
 | `--model` | Demucs model. Default `htdemucs_6s` splits into **drums, bass, guitar, piano, vocals, other**. `htdemucs` and `htdemucs_ft` give drums, bass, vocals, other, and are a bit cleaner at that. |
 | `--backing-only` | Write only the backing track. |
-| `--format flac` | Write FLAC instead of WAV. |
+| `--format flac` | Write FLAC (or `mp3`) instead of WAV. |
 | `-o, --output DIR` | Output folder. Default: `out/<song>/` next to the song. |
 | `--dry-run` | Show what would happen and write nothing. |
 
@@ -193,8 +193,9 @@ song can override them.
 - **`mute`**: the opposite of `hear`. Use either one per song.
 - **`skip`**: files or stems to ignore, such as a full mix (`["visualizer"]`).
 - **`solos`**: one or more solo regions, see below.
-- **`format`**: `"wav"` (default) or `"flac"`. FLAC is lossless and smaller; float or 32 bit
-  input becomes 24 bit there.
+- **`format`**: `"wav"` (default), `"flac"` or `"mp3"`. FLAC is lossless and smaller; float or
+  32 bit input becomes 24 bit there. MP3 is lossy (encoded by the LAME encoder inside
+  libsndfile, so no extra install) and is meant for listening, not for further editing.
 - **`stems`**: `stems = false` writes only the backing track.
 - **`fade_ms`**, **`mixdown`**, **`output`**: see `songs.example.toml`.
 - Relative paths are resolved against the directory of the config file.

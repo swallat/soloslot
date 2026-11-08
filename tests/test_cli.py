@@ -176,6 +176,18 @@ def test_flac_output(tmp_path: Path, stems_dir: Path) -> None:
     assert not list(out.glob("*.wav"))
 
 
+def test_mp3_output(tmp_path: Path, stems_dir: Path) -> None:
+    cfg = tmp_path / "songs.toml"
+    cfg.write_text(CONFIG.replace("fade_ms = 5", 'fade_ms = 5\nformat = "mp3"'), encoding="utf-8")
+    result = CliRunner().invoke(main, [str(cfg)])
+    assert result.exit_code == 0, result.output
+    out = tmp_path / "out" / "Song"
+    backing = out / "Song - Backing Track.mp3"
+    assert sf.info(backing).format == "MP3"
+    assert sf.info(next(out.glob("*Bass*.mp3"))).format == "MP3"
+    assert not list(out.glob("*.wav"))
+
+
 def test_originals_are_never_overwritten(tmp_path: Path, stems_dir: Path) -> None:
     before = {p.name: p.read_bytes() for p in stems_dir.iterdir()}
     run(tmp_path)

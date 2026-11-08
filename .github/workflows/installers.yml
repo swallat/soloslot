@@ -59,8 +59,12 @@ jobs:
       - name: macOS disk image
         if: matrix.name == 'macos'
         run: |
-          mkdir -p installers
-          hdiutil create -volname soloslot -srcfolder dist/soloslot.app -ov -format UDZO \
+          mkdir -p installers dmg
+          cp -R dist/soloslot.app dmg/
+          ln -s /Applications dmg/Applications
+          cp packaging/icons/soloslot.icns dmg/.VolumeIcon.icns
+          SetFile -a C dmg
+          hdiutil create -volname soloslot -srcfolder dmg -ov -format UDZO \
             "installers/soloslot-${{ steps.v.outputs.version }}-macos-arm64.dmg"
 
       - name: Linux AppImage

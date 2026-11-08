@@ -12,6 +12,8 @@ All notable changes to this project are documented here. The format follows
   and cache in the app data folder.
 
 ### Changed
+- Installers show the logo: Windows setup wizard images, macOS disk image volume icon and
+  Applications shortcut.
 - The separation environment uses Python 3.13 (3.12 on Intel Macs, where Demucs needs an old
   PyTorch).
 

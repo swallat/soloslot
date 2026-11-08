@@ -13,7 +13,7 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QColor, QGuiApplication, QImage, QPainter
 
 from soloslot.gui.branding import ASSETS, render_svg
 
@@ -49,6 +49,19 @@ def make_icns(pngs: dict[int, bytes]) -> bytes:
     return b"icns" + struct.pack(">I", len(body) + 8) + body
 
 
+def _wizard_bmp(svg: bytes, width: int, height: int, logo: int, top: int) -> bytes:
+    """A white BMP (Inno Setup wizard image) with the logo mark centred near the top."""
+    image = QImage(width, height, QImage.Format.Format_RGB32)
+    image.fill(QColor("#ffffff"))
+    painter = QPainter(image)
+    painter.drawImage((width - logo) // 2, top, render_svg(svg, logo))
+    painter.end()
+    buf = QBuffer()
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+    image.save(buf, "BMP")
+    return bytes(QByteArray(buf.data()))
+
+
 def main(out: Path) -> None:
     _app = QGuiApplication.instance() or QGuiApplication(sys.argv[:1])
     svg = (ASSETS / "app-icon.svg").read_bytes()
@@ -59,6 +72,15 @@ def main(out: Path) -> None:
         make_ico({s: pngs[s] for s in (16, 24, 32, 48, 64, 128, 256)})
     )
     (out / "soloslot.icns").write_bytes(make_icns(pngs))
+    mark = (ASSETS / "mark.svg").read_bytes()
+    # Inno Setup picks the size that fits the user's display scaling.
+    for scale, tag in ((1, ""), (2, "@2x")):
+        (out / f"wizard{tag}.bmp").write_bytes(
+            _wizard_bmp(mark, 164 * scale, 314 * scale, 120 * scale, 40 * scale)
+        )
+        (out / f"wizard-small{tag}.bmp").write_bytes(
+            _wizard_bmp(mark, 55 * scale, 58 * scale, 44 * scale, 7 * scale)
+        )
     print(f"icons written to {out}")
 
 

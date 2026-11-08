@@ -11,6 +11,7 @@ from soloslot.audio import apply_gaps, matches, mix_stems, stem_label
 from soloslot.config import Song
 from soloslot.separate import MODEL_STEMS, SeparationError, is_cached, separate
 
+MP3_SAMPLE_RATES = (8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000)
 AUDIO_EXTENSIONS = (".wav", ".flac", ".mp3")  # in order of preference
 _LOSSLESS_SUBTYPES = {"PCM_16", "PCM_24", "PCM_32", "FLOAT", "DOUBLE"}
 
@@ -129,6 +130,9 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
             sample_rate = sr
         elif sr != sample_rate:
             log(f"  ERROR: {f.name} has {sr} Hz, expected {sample_rate} Hz")
+            return False
+        if song.format == "mp3" and sr not in MP3_SAMPLE_RATES:
+            log(f"  ERROR: MP3 cannot store {sr} Hz ({f.name}); use wav or flac")
             return False
         audible = not _silenced(song, label)
         result = audio if audible else apply_gaps(audio, sr, song.solos, song.fade_ms)

@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-08
+
 ### Added
 - Desktop window `soloslot-gui` (optional `gui` extra) with a collapsible console output.
 - Update notice in the window: checks GitHub Releases at startup (one request, can be turned
@@ -39,5 +41,6 @@ command and module).
 - `--song` to pick a song and `--dry-run` to preview.
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
-[Unreleased]: https://github.com/swallat/soloslot/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/swallat/soloslot/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/swallat/soloslot/releases/tag/v0.2.0
 [0.1.0]: https://github.com/swallat/soloslot/releases/tag/v0.1.0

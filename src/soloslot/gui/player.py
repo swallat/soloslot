@@ -45,7 +45,7 @@ class SoundDeviceOutput:
         self._stream.start()
 
     def stop(self) -> None:
-        self._stream.stop()
+        self._stream.abort()  # stop() would wait for queued audio to play out; we want it now
         self._stream.close()
 
     def free_bytes(self) -> int:

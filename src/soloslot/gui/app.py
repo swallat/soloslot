@@ -36,7 +36,7 @@ except ImportError:  # pragma: no cover
 from soloslot import __version__
 from soloslot.config import OUTPUT_FORMATS, ConfigError
 from soloslot.gui.about import show_about
-from soloslot.gui.branding import apply_style, mark_pixmap
+from soloslot.gui.branding import app_icon, apply_style, mark_pixmap
 from soloslot.gui.model import DEFAULT_STEMS, Form, build_song, stems_of
 from soloslot.process import process_song
 from soloslot.update import Update, UpdateError, check_for_update, download_update
@@ -103,6 +103,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle(f"soloslot {__version__}")
+        self.setWindowIcon(app_icon())  # title bar and taskbar, also on Windows
         self.resize(600, 700)
         self._thread: QThread | None = None
         self._worker: Worker | None = None
@@ -382,7 +383,17 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
 
+def _set_windows_app_id() -> None:
+    """Give Windows our own identity so the taskbar shows the soloslot icon, not Python's."""
+    if sys.platform == "win32":
+        import ctypes
+
+        with contextlib.suppress(Exception):
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("soloslot.soloslot.gui")
+
+
 def main() -> None:
+    _set_windows_app_id()
     app = QApplication(sys.argv)
     app.setApplicationName("soloslot")
     app.setApplicationVersion(__version__)

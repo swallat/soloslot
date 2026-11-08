@@ -67,3 +67,10 @@ def test_manual_update_check(monkeypatch):
     assert not w.banner.isVisibleTo(w)
     w._manual_result(Update("9.9.9", "", "https://example", None, None, None), "")
     assert w.banner.isVisibleTo(w)
+
+
+def test_window_has_the_logo_icon():
+    QApplication.instance() or QApplication([])
+    w = MainWindow()
+    assert not w.windowIcon().isNull()
+    assert w.windowIcon().availableSizes()

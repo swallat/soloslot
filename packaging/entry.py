@@ -21,7 +21,8 @@ if "--selftest" in sys.argv:
     app = QApplication(sys.argv[:1])
     apply_style(app)
     AboutDialog()  # fails if the bundled logo or license notices are missing
-    MainWindow()
+    window = MainWindow()
+    assert not window.windowIcon().isNull(), "window icon missing"
     print("selftest ok")
     raise SystemExit(0)
 

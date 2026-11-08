@@ -45,4 +45,10 @@ By contributing you agree that your contribution is licensed under the [MIT Lice
    `version` in `pyproject.toml`.
 2. Merge that change to `main`, then tag it: `git tag v0.1.0 && git push origin v0.1.0`.
 3. The `Release` workflow checks that the tag matches the version, runs the tests, builds the
-   package, publishes to PyPI via Trusted Publishing and creates the GitHub release.
+   package, publishes to PyPI via Trusted Publishing, builds the desktop installers
+   (`installers.yml`: Windows, macOS, Linux) and creates the GitHub release with the packages,
+   the installers and `SHA256SUMS`. The in-app update check relies on those asset names, see
+   `platform_suffix` in `src/soloslot/update.py`.
+
+The installers can be test-built without a release: run the `Installers` workflow manually
+or change anything under `packaging/` in a pull request. Locally: `packaging/build.sh`.

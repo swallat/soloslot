@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Desktop window `soloslot-gui` (optional `gui` extra) with a collapsible console output.
+- Release workflow builds installers: Windows setup `.exe`, macOS `.dmg` (Apple Silicon), Linux
+  `.AppImage`, plus `SHA256SUMS`. They are unsigned and do not bundle PyTorch/Demucs.
+
 ## [0.1.0] - 2026-11-08
 
 First release on PyPI. Formerly developed as stem-solo-gap, now named **soloslot** (package,

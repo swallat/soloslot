@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import sys
 from pathlib import Path
 
 try:
-    from PySide6.QtCore import QObject, Qt, QThread, Signal
+    from PySide6.QtCore import QObject, Qt, QThread, QUrl, Signal
+    from PySide6.QtGui import QDesktopServices
     from PySide6.QtWidgets import (
         QApplication,
         QCheckBox,
@@ -16,6 +18,7 @@ try:
         QFormLayout,
         QGroupBox,
         QHBoxLayout,
+        QLabel,
         QLineEdit,
         QMainWindow,
         QMessageBox,
@@ -33,6 +36,7 @@ from soloslot import __version__
 from soloslot.config import OUTPUT_FORMATS, ConfigError
 from soloslot.gui.model import DEFAULT_STEMS, Form, build_song, stems_of
 from soloslot.process import process_song
+from soloslot.update import Update, UpdateError, check_for_update, download_update
 
 
 class _Stream:
@@ -70,6 +74,28 @@ class Worker(QObject):
         self.finished.emit(ok)
 
 
+class Task(QObject):
+    """Runs `fn` on a worker thread and reports (result, error text)."""
+
+    done = Signal(object, str)
+
+    def __init__(self, fn):
+        super().__init__()
+        self._fn = fn
+
+    def run(self) -> None:
+        try:
+            self.done.emit(self._fn(), "")
+        except UpdateError as e:
+            self.done.emit(None, str(e))
+        except Exception as e:  # never let a background check crash the app
+            self.done.emit(None, f"{type(e).__name__}: {e}")
+
+
+def _frozen() -> bool:
+    return bool(getattr(sys, "frozen", False))
+
+
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
@@ -82,6 +108,21 @@ class MainWindow(QMainWindow):
         root = QWidget()
         self.setCentralWidget(root)
         layout = QVBoxLayout(root)
+
+        # Update notice (hidden until a newer release is found)
+        self.banner = QWidget()
+        banner_row = QHBoxLayout(self.banner)
+        banner_row.setContentsMargins(0, 0, 0, 0)
+        self.banner_text = QLabel()
+        self.banner_text.setWordWrap(True)
+        self.banner_button = QPushButton()
+        self.banner_button.clicked.connect(self._update_clicked)
+        banner_row.addWidget(self.banner_text, 1)
+        banner_row.addWidget(self.banner_button)
+        self.banner.setVisible(False)
+        layout.addWidget(self.banner)
+        self._update: Update | None = None
+        self._tasks: list[tuple[QThread, Task]] = []
 
         # Input
         self.source = QLineEdit()
@@ -147,6 +188,52 @@ class MainWindow(QMainWindow):
         self.log.setVisible(False)
         layout.addWidget(self.log, 1)
         layout.addStretch(0)
+
+    # -- updates
+    def _run_task(self, fn, slot) -> None:
+        thread, task = QThread(), Task(fn)
+        task.moveToThread(thread)
+        thread.started.connect(task.run)
+        task.done.connect(slot)
+        task.done.connect(thread.quit)
+        self._tasks.append((thread, task))
+        thread.start()
+
+    def check_updates(self) -> None:
+        if os.environ.get("SOLOSLOT_NO_UPDATE_CHECK"):
+            return
+        self._run_task(lambda: check_for_update(__version__), self._update_found)
+
+    def _update_found(self, update, error: str) -> None:
+        if error or update is None:
+            return  # offline or up to date: stay quiet
+        self._update = update
+        self.banner_text.setText(f"soloslot {update.version} is available.")
+        installable = _frozen() and update.asset_url is not None
+        self.banner_button.setText("Download and install" if installable else "Release page")
+        self.banner.setVisible(True)
+
+    def _update_clicked(self) -> None:
+        update = self._update
+        if update is None:
+            return
+        if not (_frozen() and update.asset_url):
+            QDesktopServices.openUrl(QUrl(update.page))
+            return
+        self.banner_button.setEnabled(False)
+        self.banner_text.setText(f"Downloading soloslot {update.version}…")
+        folder = Path.home() / "Downloads"
+        self._run_task(lambda: download_update(update, folder), self._downloaded)
+
+    def _downloaded(self, path, error: str) -> None:
+        self.banner_button.setEnabled(True)
+        if error or path is None:
+            self.banner_text.setText(f"Update failed: {error}")
+            return
+        self.banner_text.setText(f"Downloaded {path.name}. Close soloslot to finish the update.")
+        # Windows runs the installer, macOS mounts the disk image, Linux shows the folder.
+        target = path.parent if sys.platform.startswith("linux") else path
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
 
     # -- input helpers
     def _pick_file(self) -> None:
@@ -231,6 +318,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:
         # A running job cannot be cancelled safely; destroying its thread would crash.
+        for thread, _ in self._tasks:
+            thread.quit()
+            thread.wait(2000)
         if self._thread is not None and self._thread.isRunning():
             QMessageBox.information(self, "soloslot", "Please wait until the job has finished.")
             event.ignore()
@@ -242,6 +332,7 @@ def main() -> None:
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
+    window.check_updates()
     sys.exit(app.exec())
 
 

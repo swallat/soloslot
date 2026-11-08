@@ -230,9 +230,11 @@ class MainWindow(QMainWindow):
             self.log.appendPlainText("\nDone.")
 
     def closeEvent(self, event) -> None:
+        # A running job cannot be cancelled safely; destroying its thread would crash.
         if self._thread is not None and self._thread.isRunning():
-            self._thread.quit()
-            self._thread.wait(2000)
+            QMessageBox.information(self, "soloslot", "Please wait until the job has finished.")
+            event.ignore()
+            return
         super().closeEvent(event)
 
 

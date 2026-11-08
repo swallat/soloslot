@@ -6,8 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Changed
-- Renamed from stem-solo-gap to **soloslot** (package, command and module).
+## [0.1.0] - 2026-11-08
+
+First release on PyPI. Formerly developed as stem-solo-gap, now named **soloslot** (package,
+command and module).
 
 ### Added
 - Stem separation with Demucs (optional `separate` extra): give a full song (MP3, WAV, FLAC,
@@ -18,10 +20,6 @@ All notable changes to this project are documented here. The format follows
 - `mute` as the opposite of `hear`: name the stems to silence in the solo, the rest stays.
 - `--backing-only` / `stems = false` to write only the backing track.
 - Separated stems are cached in the output folder and reused until the input file changes.
-
-## [0.1.0] - 2026-11-08
-
-### Added
 - Silence one or more solo regions in stem files and write the stems plus a mixed
   `<song> - Backing Track`.
 - `hear` / `skip` to choose which stems stay audible in the solo and which files are ignored;
@@ -34,4 +32,4 @@ All notable changes to this project are documented here. The format follows
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
 [Unreleased]: https://github.com/swallat/soloslot/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/swallat/soloslot/commits/main
+[0.1.0]: https://github.com/swallat/soloslot/releases/tag/v0.1.0

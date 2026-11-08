@@ -1,0 +1,43 @@
+# mise provides uv only and auto-loads the .venv that `uv sync` creates
+# (on entering the directory with `mise activate`, and in `mise exec` / `mise run`).
+# Python version, interpreter and packages are managed by uv
+# (.python-version, pyproject.toml, uv.lock).
+[tools]
+uv = "0.13.5"
+
+[env]
+# create = false: only `uv sync` creates the venv, never mise.
+_.python.venv = { path = ".venv", create = false }
+
+[tasks.install]
+description = "Create .venv and install dependencies"
+alias = "i"
+run = "uv sync"
+
+[tasks.test]
+description = "Run all tests"
+run = "uv run pytest"
+
+[tasks.lint]
+description = "Ruff lint and format check"
+alias = "lc"
+run = [
+  "uv run ruff check .",
+  "uv run ruff format --check .",
+]
+
+[tasks.fix]
+description = "Ruff auto-fix and format"
+alias = "lf"
+run = [
+  "uv run ruff check --fix .",
+  "uv run ruff format .",
+]
+
+[tasks.check]
+description = "lint + test"
+depends = ["lint", "test"]
+
+[tasks.run]
+description = "Run the CLI, e.g. `mise run run -- songs.toml --dry-run`"
+run = "uv run stem-solo-gap"

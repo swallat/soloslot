@@ -1,0 +1,34 @@
+# Example config for stem-solo-gap.
+# Relative paths are resolved against the directory of this file.
+#
+# "hear" = stems that stay AUDIBLE in the solo; every other stem is silenced there.
+# Matching is a case-insensitive substring of the stem name:
+#   "piano" matches "Grand Piano", "guitar" matches "Guitars", "bass" matches "Bass".
+# Stems a song does not have (e.g. no guitar) are simply ignored. A typo in
+# "hear" is reported as a warning.
+
+[defaults]
+output  = "out"                         # one sub folder per song
+hear    = ["piano", "bass", "drums"]    # still audible in the solo
+skip    = ["visualizer"]                # ignore these files/stems (e.g. the full mix)
+fade_ms = 30                            # fade at the cut edges
+mixdown = true                          # also write "<song> - Backing Track.wav"
+
+[[song]]
+name   = "Interplay"
+folder = "stems/Interplay"
+bpm    = 113                            # only needed when using bars instead of times
+# Solo in bars (bar 1 = start of the file, 4/4):
+solos  = [ { start_bar = 36, end_bar = 97 } ]
+
+# Another song: no guitar, solo given as times, different "hear" just for this song.
+# [[song]]
+# name   = "Other Song"
+# folder = "stems/Other Song"
+# hear   = ["bass", "drums"]            # overrides defaults.hear
+# solos  = [ { start = "1:05", end = "2:40" }, { start = "4:10.5", end = "5:02" } ]
+#
+# Optional per song:
+#   beats_per_bar = 3        # for 3/4 or 6/8
+#   offset = "0:02.3"        # seconds before bar 1 if the file has a lead-in
+#   mixdown = false

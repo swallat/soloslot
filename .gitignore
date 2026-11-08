@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+
+# Tools
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE / local
+.idea/
+.vscode/
+.claude/settings.local.json
+.claude/worktrees/
+
+# User data: audio and personal config never belong in the repo
+*.wav
+*.mp3
+*.flac
+/stems/
+/out/
+/songs.toml

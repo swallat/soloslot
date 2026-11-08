@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=soloslot
+Comment=Mute instruments in a solo and build a play-along backing track
+Exec=soloslot
+Icon=soloslot
+Categories=AudioVideo;Audio;
+Terminal=false

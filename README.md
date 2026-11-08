@@ -120,6 +120,11 @@ Choose a song (or a folder with stems), enter the solo regions (`2:15-3:40`, one
 tick the stems to mute, pick an output folder and press the button. The console output
 (including Demucs progress) is under the collapsible **Details** section.
 
+Prebuilt installers (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`) are attached to each
+[release](https://github.com/swallat/soloslot/releases). They are not code-signed yet:
+Windows SmartScreen shows "unknown publisher" (More info, Run anyway), and on macOS you open
+the app once with right-click, Open. The installers are slim and do not contain PyTorch, so splitting full songs with Demucs inside the installed app is not available yet (use a stems folder, or install with `uv tool install 'soloslot[gui,separate]'`).
+
 ## Working with stems you already have
 
 Put each song's stems (WAV, FLAC or MP3) in their own folder and describe the solo in a

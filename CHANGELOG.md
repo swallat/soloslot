@@ -14,6 +14,7 @@ All notable changes to this project are documented here. The format follows
   app and next to it in the Windows installer and the AppImage.
 
 ### Changed
+- README shows screenshots (`packaging/screenshots.py` renders them offscreen).
 - Window design follows the logo: amber accent for the main action, focus and progress,
   Fusion style for the same look on every platform, labelled inputs, larger click targets.
 

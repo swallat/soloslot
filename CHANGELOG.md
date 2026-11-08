@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-08
+
+### Added
+- Player in the window: waveform of the song or stems, solo slots drawn, moved and resized with
+  the mouse (kept in sync with the solo list), playback with the original or the result with
+  gaps, an optional "Show stems" view with one waveform per stem, and "Preview slot" to check the
+  start and end of a slot. Uses `sounddevice` (PortAudio).
+
 ### Fixed
 - Installed app: the stem separation setup no longer picks up the user's own Python or uv
   configuration (it failed on a scoop-managed Python on Windows). uv now uses its own Python
@@ -20,9 +28,6 @@ All notable changes to this project are documented here. The format follows
 ## [0.3.0] - 2026-11-08
 
 ### Added
-- Player in the window: waveform of the song or stems, solo slots drawn, moved and resized with
-  the mouse (kept in sync with the solo list), playback with the original or the result with
-  gaps, an optional "Show stems" view with one waveform per stem, and "Preview slot" to check the start and end of a slot. Uses `sounddevice` (PortAudio).
 - MP3 as output format (`--format mp3`, `format = "mp3"`, GUI format list).
 - The installed desktop app can now split full songs: on first use it downloads `uv`
   (checksum verified), creates a private Python environment in the user's data folder and
@@ -75,7 +80,8 @@ command and module).
 - `--song` to pick a song and `--dry-run` to preview.
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
-[Unreleased]: https://github.com/swallat/soloslot/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/swallat/soloslot/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/swallat/soloslot/releases/tag/v0.3.0
 [0.2.0]: https://github.com/swallat/soloslot/releases/tag/v0.2.0
 [0.1.0]: https://github.com/swallat/soloslot/releases/tag/v0.1.0

@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-08
+
 ### Added
 - MP3 as output format (`--format mp3`, `format = "mp3"`, GUI format list).
 - The installed desktop app can now split full songs: on first use it downloads `uv`
@@ -59,6 +61,7 @@ command and module).
 - `--song` to pick a song and `--dry-run` to preview.
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
-[Unreleased]: https://github.com/swallat/soloslot/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/swallat/soloslot/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/swallat/soloslot/releases/tag/v0.3.0
 [0.2.0]: https://github.com/swallat/soloslot/releases/tag/v0.2.0
 [0.1.0]: https://github.com/swallat/soloslot/releases/tag/v0.1.0

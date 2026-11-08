@@ -5,8 +5,8 @@ import pytest
 import soundfile as sf
 from click.testing import CliRunner
 
-from stem_solo_gap import __version__
-from stem_solo_gap.cli import main
+from soloslot import __version__
+from soloslot.cli import main
 from tests.conftest import SR, STEMS, moises_name
 
 CONFIG = """

@@ -4,13 +4,13 @@ Thanks for your interest! Bug reports, ideas and pull requests are welcome.
 
 ## Reporting bugs and ideas
 
-Open an [issue](https://github.com/swallat/stem-solo-gap/issues/new/choose). For a bug,
+Open an [issue](https://github.com/swallat/soloslot/issues/new/choose). For a bug,
 please include:
 
 - the command you ran and the full output,
 - your config file (remove anything private),
 - the file format of your stems (WAV, FLAC, MP3, sample rate, bit depth),
-- your OS and `stem-solo-gap --version`.
+- your OS and `soloslot --version`.
 
 Please **do not attach copyrighted audio**. Describe the files instead.
 

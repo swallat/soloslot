@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from stem_solo_gap.config import ConfigError, load_config, parse_time
+from soloslot.config import ConfigError, load_config, parse_time
 
 
 @pytest.mark.parametrize(

@@ -20,7 +20,7 @@ jobs:
       - run: uv sync --locked
       - run: uv run pytest
       - name: CLI smoke test
-        run: uv run stem-solo-gap --version
+        run: uv run soloslot --version
 
   lint:
     runs-on: ubuntu-latest

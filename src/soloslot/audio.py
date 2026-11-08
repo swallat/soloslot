@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
-from stem_solo_gap.config import Solo
+from soloslot.config import Solo
 
 Audio = NDArray[np.floating]
 

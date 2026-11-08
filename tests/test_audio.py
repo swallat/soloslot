@@ -3,8 +3,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from stem_solo_gap.audio import apply_gaps, matches, mix_stems, stem_label
-from stem_solo_gap.config import Solo
+from soloslot.audio import apply_gaps, matches, mix_stems, stem_label
+from soloslot.config import Solo
 
 SR = 1000
 

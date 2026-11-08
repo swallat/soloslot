@@ -40,4 +40,4 @@ depends = ["lint", "test"]
 
 [tasks.run]
 description = "Run the CLI, e.g. `mise run run -- songs.toml --dry-run`"
-run = "uv run stem-solo-gap"
+run = "uv run soloslot"

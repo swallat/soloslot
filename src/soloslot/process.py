@@ -7,8 +7,9 @@ from pathlib import Path
 
 import soundfile as sf
 
-from stem_solo_gap.audio import apply_gaps, matches, mix_stems, stem_label
-from stem_solo_gap.config import Song
+from soloslot.audio import apply_gaps, matches, mix_stems, stem_label
+from soloslot.config import Song
+from soloslot.separate import MODEL_STEMS, SeparationError, is_cached, separate
 
 AUDIO_EXTENSIONS = (".wav", ".flac", ".mp3")  # in order of preference
 _LOSSLESS_SUBTYPES = {"PCM_16", "PCM_24", "PCM_32", "FLOAT", "DOUBLE"}
@@ -33,9 +34,50 @@ def output_subtype(input_subtype: str, fmt: str = "wav") -> str:
     return input_subtype if input_subtype in allowed else "PCM_24"
 
 
+def _check_names(song: Song, labels: list[str], log: Callable[[str], None]) -> None:
+    # A typo in 'hear' would silently mute a stem (and one in 'mute' keep it), so report it.
+    key, names = ("mute", song.mute) if song.mute else ("hear", song.hear)
+    for n in names:
+        if not any(n.lower() in label for label in labels):
+            log(f"  WARNING: '{key}' entry '{n}' matches no stem of this song")
+
+
+def _silenced(song: Song, label: str) -> bool:
+    return matches(label, song.mute) if song.mute else not matches(label, song.hear)
+
+
+def _separate(song: Song, *, dry_run: bool, log: Callable[[str], None]) -> bool | None:
+    """Split `song.input` into `song.folder`. Returns True/False to stop early, None to go on."""
+    assert song.input is not None
+    if not song.input.is_file():
+        log(f"  ERROR: input file not found: {song.input}")
+        return False
+    if dry_run and not is_cached(song.input, song.folder, song.model):
+        # Nothing to read yet: show what the separation would produce.
+        labels = list(MODEL_STEMS.get(song.model, ()))
+        log(f"  would separate {song.input.name} with Demucs '{song.model}' into {song.folder}")
+        for s in song.solos:
+            log(f"  Solo: {s.start:7.2f}s - {s.end:7.2f}s  ({s.end - s.start:.1f}s)")
+        if labels:
+            _check_names(song, labels, log)
+            for label in labels:
+                log(f"  {'silent in solo' if _silenced(song, label) else 'stays audible'}: {label}")
+        return True
+    try:
+        separate(song.input, song.folder, song.model, log=log)
+    except SeparationError as e:
+        log(f"  ERROR: {e}")
+        return False
+    return None
+
+
 def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None] = print) -> bool:
     """Process one song. Returns False (after logging why) if it could not be done."""
     log(f"\n=== {song.name} ===")
+    if song.input is not None:
+        done = _separate(song, dry_run=dry_run, log=log)
+        if done is not None:
+            return done
     if not song.folder.is_dir():
         log(f"  ERROR: folder not found: {song.folder}")
         return False
@@ -57,10 +99,7 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
         log(f"  ERROR: no audio files found ({', '.join(AUDIO_EXTENSIONS)})")
         return False
 
-    # A typo in 'hear' would silently mute a stem, so report unmatched entries.
-    for h in song.hear:
-        if not any(h.lower() in label for _, label in stems):
-            log(f"  WARNING: 'hear' entry '{h}' matches no stem of this song")
+    _check_names(song, [label for _, label in stems], log)
 
     out_dir = song.output
     sample_rate = None
@@ -73,7 +112,7 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
         elif sr != sample_rate:
             log(f"  ERROR: {f.name} has {sr} Hz, expected {sample_rate} Hz")
             return False
-        audible = matches(label, song.hear)
+        audible = not _silenced(song, label)
         result = audio if audible else apply_gaps(audio, sr, song.solos, song.fade_ms)
         log(f"  {'stays audible' if audible else 'silent in solo'}: {label}")
         results.append(result)

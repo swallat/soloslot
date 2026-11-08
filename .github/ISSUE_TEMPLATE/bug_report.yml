@@ -35,6 +35,6 @@ body:
     id: version
     attributes:
       label: Version and OS
-      description: Output of `stem-solo-gap --version`, and your operating system.
+      description: Output of `soloslot --version`, and your operating system.
     validations:
       required: true

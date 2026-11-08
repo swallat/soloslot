@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.svg" alt="soloslot logo" width="420">
+  <img src="https://raw.githubusercontent.com/swallat/soloslot/main/docs/logo.svg" alt="soloslot logo" width="420">
 </p>
 
 <h1 align="center">soloslot</h1>

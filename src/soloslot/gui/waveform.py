@@ -32,6 +32,8 @@ class WaveformView(QWidget):
         self.setMouseTracking(True)
         self.peaks: np.ndarray | None = None  # (n, 2) min/max over the whole song
         self.duration = 0.0
+        self.lanes: list[tuple[str, np.ndarray]] = []  # per-stem peaks
+        self.show_lanes = False
         self.slots: list[Solo] = []
         self.selected = -1
         self.playhead = 0.0
@@ -45,6 +47,19 @@ class WaveformView(QWidget):
     def set_peaks(self, peaks: np.ndarray | None, duration: float) -> None:
         self.peaks, self.duration = peaks, duration
         self.fit()
+
+    def set_lanes(self, lanes: list[tuple[str, np.ndarray]]) -> None:
+        self.lanes = lanes
+        self._resize_for_lanes()
+
+    def set_show_lanes(self, on: bool) -> None:
+        self.show_lanes = on
+        self._resize_for_lanes()
+
+    def _resize_for_lanes(self) -> None:
+        count = 1 + (len(self.lanes) if self.show_lanes else 0)
+        self.setMinimumHeight(110 if count == 1 else min(60 * count, 420))
+        self.update()
 
     def set_slots(self, slots: list[Solo]) -> None:
         """Replace the slots from outside (e.g. the text field); does not emit."""
@@ -111,6 +126,19 @@ class WaveformView(QWidget):
         self.update()
         self.slotsChanged.emit()
 
+    def _draw_peaks(self, p: QPainter, peaks: np.ndarray, mid: float, scale: float) -> None:
+        n, w = len(peaks), max(self.width(), 1)
+        per_px = self.view_len / w
+        for px in range(w):
+            t0 = self.view_start + px * per_px
+            i0 = int(t0 / self.duration * n)
+            i1 = max(int((t0 + per_px) / self.duration * n), i0 + 1)
+            if i0 >= n:
+                break
+            seg = peaks[i0 : min(i1, n)]
+            lo, hi = float(seg[:, 0].min()), float(seg[:, 1].max())
+            p.drawLine(QPointF(px + 0.5, mid - hi * scale), QPointF(px + 0.5, mid - lo * scale))
+
     # -- painting
     def paintEvent(self, _event) -> None:
         p = QPainter(self)
@@ -120,7 +148,7 @@ class WaveformView(QWidget):
             p.setPen(pal.placeholderText().color())
             p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self.message)
             return
-        h, mid = self.height(), self.height() / 2
+        h = self.height()
         accent = pal.highlight().color()
         # slots under the waveform
         for i, s in enumerate(self.slots):
@@ -133,21 +161,19 @@ class WaveformView(QWidget):
             p.drawLine(QPointF(x1, 0), QPointF(x1, h))
             p.setPen(pal.text().color())
             p.drawText(QPointF(x0 + 4, 14), f"{i + 1}")
-        # peaks
-        n = len(self.peaks)
-        w = max(self.width(), 1)
+        # peaks: the mix, then (optionally) one lane per stem
+        lanes = [("", self.peaks)] + (self.lanes if self.show_lanes else [])
+        lane_h = h / len(lanes)
         p.setPen(QPen(pal.text().color(), 1))
-        scale = mid * 0.92
-        per_px = self.view_len / w
-        for px in range(w):
-            t0 = self.view_start + px * per_px
-            i0 = int(t0 / self.duration * n)
-            i1 = max(int((t0 + per_px) / self.duration * n), i0 + 1)
-            if i0 >= n:
-                break
-            seg = self.peaks[i0 : min(i1, n)]
-            lo, hi = float(seg[:, 0].min()), float(seg[:, 1].max())
-            p.drawLine(QPointF(px + 0.5, mid - hi * scale), QPointF(px + 0.5, mid - lo * scale))
+        for k, (label, data) in enumerate(lanes):
+            top = k * lane_h
+            self._draw_peaks(p, data, top + lane_h / 2, lane_h / 2 * 0.92)
+            if label:
+                p.setPen(QPen(pal.mid().color(), 1))
+                p.drawLine(QPointF(0, top), QPointF(self.width(), top))
+                p.setPen(pal.placeholderText().color())
+                p.drawText(QPointF(self.width() - 6 - 8 * len(label), top + 13), label)
+                p.setPen(QPen(pal.text().color(), 1))
         # playhead
         x = self._x(self.playhead)
         p.setPen(QPen(QColor("#e5484d"), 2))

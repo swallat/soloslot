@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QButtonGroup,
+    QCheckBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -48,6 +49,9 @@ class PlayerPanel(QWidget):
         group = QButtonGroup(self)
         group.addButton(self.original)
         group.addButton(self.gaps)
+        self.show_stems = QCheckBox("Show stems")
+        self.show_stems.setToolTip("One waveform per stem below the mix")
+        self.show_stems.toggled.connect(self.wave.set_show_lanes)
         self.time = QLabel("0:00 / 0:00")
         self.time.setMinimumWidth(90)
         self.hint = QLabel()
@@ -60,7 +64,14 @@ class PlayerPanel(QWidget):
         zoom_in.setFixedWidth(34)
 
         row = QHBoxLayout()
-        for w in (self.play_btn, self.stop_btn, self.slot_btn, self.original, self.gaps):
+        for w in (
+            self.play_btn,
+            self.stop_btn,
+            self.slot_btn,
+            self.original,
+            self.gaps,
+            self.show_stems,
+        ):
             row.addWidget(w)
         row.addStretch(1)
         row.addWidget(self.time)
@@ -102,6 +113,7 @@ class PlayerPanel(QWidget):
         self.stems = None
         self.wave.message = message or "Choose a song or a stems folder to see its waveform."
         self.wave.set_peaks(None, 0.0)
+        self.wave.set_lanes([])
         self._update_buttons()
         self._position(0.0)
 
@@ -111,6 +123,15 @@ class PlayerPanel(QWidget):
         original = rg.render(stems, (), [], self.fade_ms, gaps=False)
         buckets = max(int(stems.duration * PEAKS_PER_SECOND), 1)
         self.wave.set_peaks(rg.peaks(original, buckets), stems.duration)
+        self.wave.set_lanes(
+            [
+                (label, rg.peaks(data, buckets))
+                for label, data in zip(stems.labels, stems.audio, strict=True)
+            ]
+            if stems.can_mute
+            else []
+        )
+        self.show_stems.setEnabled(stems.can_mute)
         self.player.set_audio(original, stems.sample_rate)
         self._rebuild()
         self._update_buttons()

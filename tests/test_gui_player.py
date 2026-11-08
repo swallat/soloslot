@@ -175,3 +175,15 @@ def test_dragging_in_the_waveform_creates_moves_and_deletes_slots(tmp_path, app)
     wave.delete_selected()
     assert wave.slots == []
     assert emitted[-1] == []
+
+
+def test_stem_lanes_are_optional(tmp_path, app):
+    panel = _panel(tmp_path, app)
+    assert [name for name, _ in panel.wave.lanes] == ["bass", "piano"]
+    assert not panel.wave.show_lanes
+    base = panel.wave.minimumHeight()
+    panel.show_stems.setChecked(True)
+    assert panel.wave.show_lanes and panel.wave.minimumHeight() > base
+    panel.wave.grab()  # paints with lanes without error
+    panel.show_stems.setChecked(False)
+    assert panel.wave.minimumHeight() == base

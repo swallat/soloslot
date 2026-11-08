@@ -9,7 +9,7 @@ from typing import Any
 
 from soloslot.separate import DEFAULT_MODEL
 
-OUTPUT_FORMATS = ("wav", "flac")
+OUTPUT_FORMATS = ("wav", "flac", "mp3")
 
 
 class ConfigError(ValueError):

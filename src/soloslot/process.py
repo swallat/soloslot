@@ -11,6 +11,7 @@ from soloslot.audio import apply_gaps, matches, mix_stems, stem_label
 from soloslot.config import Song
 from soloslot.separate import MODEL_STEMS, SeparationError, is_cached, separate
 
+MP3_SAMPLE_RATES = (8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000)
 AUDIO_EXTENSIONS = (".wav", ".flac", ".mp3")  # in order of preference
 _LOSSLESS_SUBTYPES = {"PCM_16", "PCM_24", "PCM_32", "FLOAT", "DOUBLE"}
 
@@ -25,10 +26,24 @@ def find_audio_files(folder: Path) -> list[Path]:
     return sorted(chosen.values())
 
 
+def mp3_supported() -> bool:
+    """Whether the bundled libsndfile can encode MP3 (libsndfile 1.1+, in the soundfile wheels)."""
+    return "MP3" in sf.available_formats()
+
+
+def write_audio(path: Path, data, sample_rate: int, fmt: str, subtype: str = "PCM_24") -> None:
+    """Write `data` as `fmt`. MP3 is lossy and has no bit depth, so `subtype` is ignored there."""
+    if fmt == "mp3":
+        sf.write(path, data, sample_rate, format="MP3", subtype="MPEG_LAYER_III")
+    else:
+        sf.write(path, data, sample_rate, subtype=subtype)
+
+
 def output_subtype(input_subtype: str, fmt: str = "wav") -> str:
     """Keep the input's bit depth; lossy or unsupported inputs become 24 bit PCM.
 
-    FLAC cannot store float or 32 bit PCM, so those become 24 bit there.
+    FLAC cannot store float or 32 bit PCM, so those become 24 bit there. MP3 has no bit depth
+    (see `write_audio`).
     """
     allowed = _LOSSLESS_SUBTYPES if fmt == "wav" else {"PCM_16", "PCM_24"}
     return input_subtype if input_subtype in allowed else "PCM_24"
@@ -101,6 +116,10 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
 
     _check_names(song, [label for _, label in stems], log)
 
+    if song.format == "mp3" and not dry_run and not mp3_supported():
+        log("  ERROR: this soundfile/libsndfile build cannot write MP3; use wav or flac")
+        return False
+
     out_dir = song.output
     sample_rate = None
     results = []
@@ -112,17 +131,21 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
         elif sr != sample_rate:
             log(f"  ERROR: {f.name} has {sr} Hz, expected {sample_rate} Hz")
             return False
+        if song.format == "mp3" and sr not in MP3_SAMPLE_RATES:
+            log(f"  ERROR: MP3 cannot store {sr} Hz ({f.name}); use wav or flac")
+            return False
         audible = not _silenced(song, label)
         result = audio if audible else apply_gaps(audio, sr, song.solos, song.fade_ms)
         log(f"  {'stays audible' if audible else 'silent in solo'}: {label}")
         results.append(result)
         if song.write_stems and not dry_run:
             out_dir.mkdir(parents=True, exist_ok=True)
-            sf.write(
+            write_audio(
                 out_dir / f"{f.stem}.{song.format}",
                 result,
                 sr,
-                subtype=output_subtype(info.subtype, song.format),
+                song.format,
+                output_subtype(info.subtype, song.format),
             )
 
     if song.mixdown and sample_rate is not None:
@@ -132,7 +155,7 @@ def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None
         if not dry_run:
             out_dir.mkdir(parents=True, exist_ok=True)
             path = out_dir / f"{song.name} - Backing Track.{song.format}"
-            sf.write(path, mix, sample_rate, subtype="PCM_24")
+            write_audio(path, mix, sample_rate, song.format)
             log(f"  written: {path}")
 
     if not dry_run:

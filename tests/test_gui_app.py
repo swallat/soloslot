@@ -48,3 +48,29 @@ def test_update_banner(monkeypatch):
     assert w.banner.isVisibleTo(w)
     assert "9.9.9" in w.banner_text.text()
     assert w.banner_button.text() == "Release page"
+
+
+def test_manual_update_check(monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    from soloslot.update import Update
+
+    QApplication.instance() or QApplication([])
+    shown = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *a: shown.append(a[2]))
+    monkeypatch.setattr(QMessageBox, "warning", lambda *a: shown.append(a[2]))
+    w = MainWindow()
+    w._manual_result(None, "")
+    assert "up to date" in shown[-1]
+    w._manual_result(None, "offline")
+    assert "offline" in shown[-1]
+    assert not w.banner.isVisibleTo(w)
+    w._manual_result(Update("9.9.9", "", "https://example", None, None, None), "")
+    assert w.banner.isVisibleTo(w)
+
+
+def test_window_has_the_logo_icon():
+    QApplication.instance() or QApplication([])
+    w = MainWindow()
+    assert not w.windowIcon().isNull()
+    assert w.windowIcon().availableSizes()

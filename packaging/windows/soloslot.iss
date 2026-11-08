@@ -12,12 +12,17 @@ ArchitecturesInstallIn64BitMode=x64compatible
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=..\icons\soloslot.ico
+UninstallDisplayIcon={app}\soloslot.exe
+LicenseFile=..\..\LICENSE
 OutputDir=..\..\installers
 OutputBaseFilename=soloslot-{#AppVersion}-windows-setup
 UninstallDisplayName=soloslot
 
 [Files]
 Source: "..\..\dist\soloslot\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
+Source: "..\..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
+Source: "..\..\src\soloslot\gui\assets\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\soloslot"; Filename: "{app}\soloslot.exe"

@@ -116,6 +116,11 @@ uv tool install 'soloslot[gui,separate]'
 soloslot-gui
 ```
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/swallat/soloslot/main/docs/screenshots/window-light.png" alt="soloslot window, light theme" width="360">
+  <img src="https://raw.githubusercontent.com/swallat/soloslot/main/docs/screenshots/window-dark.png" alt="soloslot window, dark theme" width="360">
+</p>
+
 Choose a song (or a folder with stems), enter the solo regions (`2:15-3:40`, one per line),
 tick the stems to mute, pick an output folder and press the button. The console output
 (including Demucs progress) is under the collapsible **Details** section.
@@ -129,8 +134,11 @@ The installers are slim and do not contain PyTorch. The first time you split a f
 app asks to download PyTorch and Demucs once (about 1 to 2 GB, kept in your user data folder,
 needs internet). Stems folders work without it.
 
+Help > About shows the version, links and the licenses of everything soloslot is built on
+(also in [THIRD_PARTY_NOTICES.md](src/soloslot/gui/assets/THIRD_PARTY_NOTICES.md)).
+
 The window checks for a newer release at startup and offers to download the installer
-(checksum verified). Set `SOLOSLOT_NO_UPDATE_CHECK=1` to turn that off.
+(checksum verified). Help > Check for updates… does the same check on demand. Set `SOLOSLOT_NO_UPDATE_CHECK=1` to turn that off.
 
 ## Working with stems you already have
 

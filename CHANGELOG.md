@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- MP3 as output format (`--format mp3`, `format = "mp3"`, GUI format list).
+
 ## [0.2.0] - 2026-11-08
 
 ### Added

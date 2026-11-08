@@ -251,5 +251,6 @@ and [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 soloslot installs these libraries, which keep their own licenses: click (BSD-3-Clause), NumPy
 (BSD-3-Clause and other permissive licenses) and python-soundfile (BSD-3-Clause), whose binary
-wheels include libsndfile (LGPL-2.1-or-later). The `separate` extra adds Demucs (MIT) and
+wheels include libsndfile (LGPL-2.1-or-later) with its MP3 codecs LAME and mpg123 (both
+LGPL-2.1-or-later); they are loaded as separate shared libraries, which the LGPL allows. The `separate` extra adds Demucs (MIT) and
 PyTorch (BSD-3-Clause).

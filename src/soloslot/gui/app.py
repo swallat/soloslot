@@ -118,6 +118,9 @@ class MainWindow(QMainWindow):
         about = QAction("&About soloslot…", self)
         about.setMenuRole(QAction.MenuRole.AboutRole)
         about.triggered.connect(lambda: show_about(self))
+        check = QAction("Check for &updates…", self)
+        check.triggered.connect(self.check_updates_manually)
+        help_menu.addAction(check)
         help_menu.addAction(about)
 
         # Header: logo and name
@@ -243,6 +246,17 @@ class MainWindow(QMainWindow):
         if os.environ.get("SOLOSLOT_NO_UPDATE_CHECK"):
             return
         self._run_task(lambda: check_for_update(__version__), self._update_found)
+
+    def check_updates_manually(self) -> None:
+        self._run_task(lambda: check_for_update(__version__), self._manual_result)
+
+    def _manual_result(self, update, error: str) -> None:
+        if error:
+            QMessageBox.warning(self, "soloslot", f"Could not check for updates.\n\n{error}")
+        elif update is None:
+            QMessageBox.information(self, "soloslot", f"soloslot {__version__} is up to date.")
+        else:
+            self._update_found(update, "")
 
     def _update_found(self, update, error: str) -> None:
         if error or update is None:

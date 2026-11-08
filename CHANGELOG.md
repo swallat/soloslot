@@ -12,6 +12,7 @@ All notable changes to this project are documented here. The format follows
 - Help > About dialog with version, author, links and a Licenses tab. License notices for Qt,
   PySide6, Demucs, PyTorch and the other dependencies (`THIRD_PARTY_NOTICES.md`) ship inside the
   app and next to it in the Windows installer and the AppImage.
+- Help > Check for updates… checks on demand and says when soloslot is up to date.
 
 ### Changed
 - README shows screenshots (`packaging/screenshots.py` renders them offscreen).

@@ -138,7 +138,7 @@ Help > About shows the version, links and the licenses of everything soloslot is
 (also in [THIRD_PARTY_NOTICES.md](src/soloslot/gui/assets/THIRD_PARTY_NOTICES.md)).
 
 The window checks for a newer release at startup and offers to download the installer
-(checksum verified). Set `SOLOSLOT_NO_UPDATE_CHECK=1` to turn that off.
+(checksum verified). Help > Check for updates… does the same check on demand. Set `SOLOSLOT_NO_UPDATE_CHECK=1` to turn that off.
 
 ## Working with stems you already have
 

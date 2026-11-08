@@ -24,7 +24,7 @@ dependencies = [
 # Split full songs into stems. Pulls in PyTorch (large download).
 separate = ["demucs>=4.1"]
 # Desktop window (soloslot-gui).
-gui = ["PySide6-Essentials>=6.7"]
+gui = ["PySide6-Essentials>=6.7", "sounddevice>=0.4.6"]
 
 [project.urls]
 Homepage = "https://github.com/swallat/soloslot"

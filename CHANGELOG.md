@@ -7,6 +7,9 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Player in the window: waveform of the song or stems, solo slots drawn, moved and resized with
+  the mouse (kept in sync with the solo list), playback with the original or the result with
+  gaps, and "Preview slot" to check the start and end of a slot. Uses `sounddevice` (PortAudio).
 - MP3 as output format (`--format mp3`, `format = "mp3"`, GUI format list).
 - The installed desktop app can now split full songs: on first use it downloads `uv`
   (checksum verified), creates a private Python environment in the user's data folder and

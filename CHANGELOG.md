@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 - Desktop window `soloslot-gui` (optional `gui` extra) with a collapsible console output.
+- Update notice in the window: checks GitHub Releases at startup (one request, can be turned
+  off with `SOLOSLOT_NO_UPDATE_CHECK=1`). The installed app downloads the installer and verifies
+  its SHA256 before opening it; other installs get a link to the release page.
 - Release workflow builds installers: Windows setup `.exe`, macOS `.dmg` (Apple Silicon), Linux
   `.AppImage`, plus `SHA256SUMS`. They are unsigned and do not bundle PyTorch/Demucs.
 

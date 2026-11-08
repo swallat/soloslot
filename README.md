@@ -21,7 +21,7 @@ uv tool install .
 
 ## Use
 
-1. Put the stem WAVs of each song in their own folder, e.g. `stems/Interplay/`.
+1. Put the stems of each song (WAV, FLAC or MP3) in their own folder, e.g. `stems/Interplay/`.
 2. Copy `songs.example.toml` to `songs.toml` and describe your songs:
 
    ```toml
@@ -43,7 +43,7 @@ uv tool install .
    stem-solo-gap songs.toml --dry-run   # show what would happen, write nothing
    ```
 
-Output goes to `out/<song>/`: every stem as WAV with the same name and bit depth, plus
+Output goes to `out/<song>/`: every stem as WAV with the same name (MP3 input becomes 24 bit; WAV/FLAC keep their bit depth), plus
 `<song> - Backing Track.wav` (the sum of all processed stems, 24 bit).
 
 ### Config

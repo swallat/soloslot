@@ -59,6 +59,28 @@ def test_backing_track_contains_only_audible_stems_in_solo(tmp_path: Path, stems
     assert abs(level(mix, 7, 9) - 0.1 * len(STEMS)) < 0.01  # all five stems outside the solo
 
 
+def test_reads_mp3_and_flac_and_writes_wav(tmp_path: Path) -> None:
+    folder = tmp_path / "stems" / "Song"
+    folder.mkdir(parents=True)
+    audio = np.full((SR * 10, 2), 0.1, dtype=np.float32)
+    sf.write(folder / "Song-Bass-F minor-112bpm-440hz.mp3", audio, SR)
+    sf.write(folder / "Song-Winds-F minor-112bpm-440hz.flac", audio, SR, "PCM_24")
+    # same base name as the FLAC: WAV wins, the FLAC must not be mixed in twice
+    sf.write(folder / "Song-Winds-F minor-112bpm-440hz.wav", audio, SR, "PCM_16")
+
+    result = run(tmp_path)
+    assert result.exit_code == 0, result.output
+    out = tmp_path / "out" / "Song"
+    assert sorted(p.name for p in out.glob("*.wav")) == [
+        "Song - Backing Track.wav",
+        "Song-Bass-F minor-112bpm-440hz.wav",
+        "Song-Winds-F minor-112bpm-440hz.wav",
+    ]
+    assert sf.info(out / "Song-Bass-F minor-112bpm-440hz.wav").subtype == "PCM_24"  # from MP3
+    assert sf.info(out / "Song-Winds-F minor-112bpm-440hz.wav").subtype == "PCM_16"  # WAV kept
+    assert level(out / "Song-Winds-F minor-112bpm-440hz.wav", 3, 5) == 0.0
+
+
 def test_dry_run_writes_nothing(tmp_path: Path, stems_dir: Path) -> None:
     result = run(tmp_path, "--dry-run")
     assert result.exit_code == 0

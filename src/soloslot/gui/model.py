@@ -75,3 +75,17 @@ def build_song(form: Form) -> Song:
     if form.backing_only:
         options["stems"] = False
     return song_from_audio(form.source, regions, mute=form.muted, output=form.output, **options)
+
+
+def cli_args(form: Form) -> list[str]:
+    """The `soloslot` command line for an audio-file form (used to run separation externally)."""
+    song = build_song(form)  # validates the form
+    assert form.source is not None
+    args = [str(form.source)]
+    for solo in parse_regions(form.solos):
+        args += ["--solo", f"{solo['start']}-{solo['end']}"]
+    args += ["--mute", ",".join(form.muted), "--model", form.model, "--format", form.fmt]
+    args += ["--output", str(song.output)]
+    if form.backing_only:
+        args.append("--backing-only")
+    return args

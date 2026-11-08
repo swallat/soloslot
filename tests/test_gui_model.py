@@ -5,7 +5,7 @@ import pytest
 import soundfile as sf
 
 from soloslot.config import ConfigError
-from soloslot.gui.model import Form, build_song, parse_regions, stems_of
+from soloslot.gui.model import Form, build_song, cli_args, parse_regions, stems_of
 
 
 def test_parse_regions():
@@ -55,3 +55,15 @@ def test_build_song_needs_input_and_mute(tmp_path):
         build_song(Form(None, "1-2", ("a",)))
     with pytest.raises(ConfigError, match="mute"):
         build_song(Form(tmp_path, "1-2", ()))
+
+
+def test_cli_args(tmp_path):
+    audio = tmp_path / "song.wav"
+    sf.write(audio, np.zeros((4410, 2), dtype="float32"), 44100)
+    form = Form(audio, "2:15-3:40\n5:00-5:20", ("guitar", "piano"), fmt="flac", backing_only=True)
+    args = cli_args(form)
+    assert args[0] == str(audio)
+    assert args.count("--solo") == 2
+    assert args[args.index("--mute") + 1] == "guitar,piano"
+    assert "--backing-only" in args
+    assert args[args.index("--output") + 1] == str((tmp_path / "out" / "song").resolve())

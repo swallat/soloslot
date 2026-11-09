@@ -6,15 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-11-09
+
 ### Added
 - Player: the usual transport buttons (previous, back 5 s, play/pause, stop, forward 5 s, next).
   Previous and next jump between the slot starts.
 - Player: A/B comparison of the original and the result with gaps. The A/B button (or the B key)
   switches at the same position without a gap or restart; both versions are kept in memory.
+- GUI: an Open output folder button after a successful run.
 
 ### Fixed
 - Windows installer: the notices page showed raw Markdown (`#`, `**`, `<links>`). The installer now
   shows a plain-text version generated at build time.
+
+### Changed
+- CI: Ubuntu runners are pinned to 26.04 LTS (the AppImage is still built on 22.04).
 
 ## [0.4.3] - 2026-11-09
 
@@ -118,7 +124,8 @@ command and module).
 - `--song` to pick a song and `--dry-run` to preview.
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
-[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.4...HEAD
+[0.4.4]: https://github.com/swallat/soloslot/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/swallat/soloslot/compare/v0.4.1...v0.4.3
 [0.4.1]: https://github.com/swallat/soloslot/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/swallat/soloslot/compare/v0.3.0...v0.4.0

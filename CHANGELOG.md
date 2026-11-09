@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-11-09
+
 ### Added
 - GUI: a Separate stems only button splits a song without building a backing track and loads
   the stems into the player, so you can set the slots and compare A/B before creating the
@@ -16,6 +18,10 @@ All notable changes to this project are documented here. The format follows
   grab zone, the cursor changes to a resize cursor over it, and it wins over a slot edge that
   is next to it. Dragging moves the position (a playing song jumps when you let go); a click
   on a free spot or inside a slot jumps there.
+
+### Fixed
+- Windows: the taskbar shows the soloslot icon. It is set explicitly from the exe, and the
+  installer shortcuts carry the app id.
 
 ## [0.4.5] - 2026-11-09
 
@@ -146,7 +152,8 @@ command and module).
 - `--song` to pick a song and `--dry-run` to preview.
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
-[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.5...HEAD
+[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.6...HEAD
+[0.4.6]: https://github.com/swallat/soloslot/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/swallat/soloslot/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/swallat/soloslot/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/swallat/soloslot/compare/v0.4.1...v0.4.3

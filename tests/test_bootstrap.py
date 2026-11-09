@@ -215,7 +215,11 @@ def test_install_separation_uses_unpacked_python_after_link_error(tmp_path, monk
     def run(cmd, log, env=None):
         calls.append(([str(c) for c in cmd], env))
         if len(calls) == 1:
-            _fake_python(tmp_path / "python", "cpython-3.13.17-linux-x86_64-gnu")
+            _fake_python(
+                tmp_path / "python",
+                "cpython-3.13.17-test",
+                windows=sys.platform.startswith("win"),
+            )
             log("error: Failed to create Python minor version link directory (os error 448)")
             return 2
         return 0
@@ -224,7 +228,8 @@ def test_install_separation_uses_unpacked_python_after_link_error(tmp_path, monk
     first, second = calls[0], calls[1]
     assert "3.13" in first[0]
     assert second[0][1:3] == ["venv", "--python"]
-    assert second[0][3].endswith("bin/python") and "cpython-3.13.17" in second[0][3]
+    assert Path(second[0][3]).name in ("python", "python.exe")
+    assert "cpython-3.13.17" in second[0][3]
     assert second[1]["UV_PYTHON_DOWNLOADS"] == "never"
     assert (root / ".installed").exists()
 

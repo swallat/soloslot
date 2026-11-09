@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-11-09
+
 ### Fixed
 - Installed app: after an app update the private stem separation environment kept running the
   old soloslot, so new options (such as Separate stems only) failed with "No such option". The
@@ -161,7 +163,8 @@ command and module).
 - `--song` to pick a song and `--dry-run` to preview.
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
-[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.7...HEAD
+[0.4.7]: https://github.com/swallat/soloslot/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/swallat/soloslot/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/swallat/soloslot/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/swallat/soloslot/compare/v0.4.3...v0.4.4

@@ -75,6 +75,6 @@ def test_reveal_command():
     from soloslot.gui.model import reveal_command
 
     p = Path("out/a - Backing Track.wav")
-    assert reveal_command(p, "win32") == ["explorer", f"/select,{p}"]
+    assert reveal_command(p, "win32") == ["explorer", "/select,"]
     assert reveal_command(p, "darwin") == ["open", "-R", str(p)]
     assert reveal_command(p, "linux") is None

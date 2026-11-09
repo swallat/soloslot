@@ -463,10 +463,26 @@ class MainWindow(QMainWindow):
         if self._result is None:
             return
         folder = self._result.parent
-        cmd = reveal_command(self._result) if self._result.exists() else None
-        if cmd and QProcess.startDetached(cmd[0], cmd[1:]):
+        if self._result.exists() and self._reveal(self._result):
             return
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+
+    @staticmethod
+    def _reveal(path: Path) -> bool:
+        """Open the file manager with `path` selected (Windows, macOS). False: open the folder."""
+        cmd = reveal_command(path)
+        if cmd is None:
+            return False
+        proc = QProcess()
+        proc.setProgram(cmd[0])
+        if sys.platform == "win32":
+            # explorer parses its own command line: the whole /select, argument must be quoted
+            # exactly like this. Qt's default quoting breaks on spaces and apostrophes and
+            # explorer then falls back to the Documents folder.
+            proc.setNativeArguments(f'/select,"{path}"')
+        else:
+            proc.setArguments(cmd[1:])
+        return proc.startDetached()
 
     def closeEvent(self, event) -> None:
         self.panel.player.stop()

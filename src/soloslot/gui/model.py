@@ -103,7 +103,7 @@ def reveal_command(path: Path, platform: str = sys.platform) -> list[str] | None
     Linux has no portable way to select a file, so None means: just open the folder.
     """
     if platform == "win32":
-        return ["explorer", f"/select,{path}"]
+        return ["explorer", "/select,"]  # the path is appended quoted by the caller
     if platform == "darwin":
         return ["open", "-R", str(path)]
     return None

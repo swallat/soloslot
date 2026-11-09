@@ -7,6 +7,10 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- Installed app: after an app update the private stem separation environment kept running the
+  old soloslot, so new options (such as Separate stems only) failed with "No such option". The
+  app now updates soloslot in that environment to its own version before it separates (quick:
+  PyTorch and Demucs stay).
 - Player: at the left and right edge the playhead's handle stayed put while the line kept
   moving. The handle now hangs on the line and flips to the other side when there is no room,
   so it follows the playhead all the way to both ends.

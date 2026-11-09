@@ -25,7 +25,7 @@ jobs:
             name: windows
           - os: macos-latest
             name: macos
-          - os: ubuntu-22.04 # older glibc: the AppImage runs on more distributions
+          - os: ubuntu-22.04 # deliberately not the newest LTS: an AppImage needs the oldest glibc we want to support
             name: linux
     steps:
       - uses: actions/checkout@v7

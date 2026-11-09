@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-11-09
+
+### Fixed
+- App setup on Windows still failed with `os error 448` because Windows refuses to follow the
+  junction uv creates for the Python minor-version link, whatever the folder. The setup now
+  removes such stale links and, when uv fails on the link, creates the environment from the
+  already unpacked `cpython-<version>` folder by its exact path (no download, no link).
+
 ### Changed
 - Added a notice that soloslot may only be used with material the user has the rights to, in the
   README, the license/notices page (Help > About, AppImage docs) and as an extra Windows installer
@@ -100,7 +108,8 @@ command and module).
 - `--song` to pick a song and `--dry-run` to preview.
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
-[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/swallat/soloslot/compare/v0.4.1...v0.4.3
 [0.4.1]: https://github.com/swallat/soloslot/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/swallat/soloslot/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/swallat/soloslot/releases/tag/v0.3.0

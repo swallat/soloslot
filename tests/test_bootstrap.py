@@ -136,9 +136,21 @@ def test_child_env_undoes_bundle_changes():
 
 
 def test_uv_env_isolates_user_python(tmp_path):
-    env = uv_env({"UV_PYTHON": "x", "VIRTUAL_ENV": "v", "PATH": "/bin"}, root=tmp_path)
+    user = {
+        "UV_PYTHON": "x",
+        "VIRTUAL_ENV": "v",
+        "UV_PYTHON_PREFERENCE": "system",
+        "UV_NO_MANAGED_PYTHON": "1",
+        "UV_SYSTEM_PYTHON": "1",
+        "UV_PYTHON_INSTALL_DIR": "C:/elsewhere",
+        "PATH": "/bin",
+    }
+    env = uv_env(user, root=tmp_path)
     assert "UV_PYTHON" not in env and "VIRTUAL_ENV" not in env
-    assert env["UV_PYTHON_PREFERENCE"] == "only-managed"
+    # uv rejects UV_MANAGED_PYTHON together with a python preference
+    assert "UV_PYTHON_PREFERENCE" not in env and "UV_NO_MANAGED_PYTHON" not in env
+    assert "UV_SYSTEM_PYTHON" not in env
+    assert env["UV_PYTHON_INSTALL_DIR"] == str(tmp_path / "python")
     assert env["UV_MANAGED_PYTHON"] == "1"
     assert env["UV_CACHE_DIR"] == str(tmp_path / "uv-cache")
 

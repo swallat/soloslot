@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-09
+
+### Fixed
+- App setup failed with uv 0.13 (`UV_MANAGED_PYTHON` cannot be used with `--python-preference`):
+  the setup now sets only `UV_MANAGED_PYTHON` and clears conflicting user uv Python variables.
+
 ## [0.4.0] - 2026-11-08
 
 ### Added
@@ -80,7 +86,8 @@ command and module).
 - `--song` to pick a song and `--dry-run` to preview.
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
-[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/swallat/soloslot/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/swallat/soloslot/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/swallat/soloslot/releases/tag/v0.3.0
 [0.2.0]: https://github.com/swallat/soloslot/releases/tag/v0.2.0

@@ -78,3 +78,22 @@ def test_reveal_command():
     assert reveal_command(p, "win32") == ["explorer", f"/select,{p}"]
     assert reveal_command(p, "darwin") == ["open", "-R", str(p)]
     assert reveal_command(p, "linux") is None
+
+
+def test_separated_stems_finds_only_a_finished_split_of_this_file(tmp_path):
+    import json
+
+    from soloslot.gui.model import separated_stems
+    from soloslot.separate import DEFAULT_MODEL, _fingerprint
+
+    song = tmp_path / "tune.mp3"
+    song.write_bytes(b"x" * 10)
+    assert separated_stems(song) is None  # never split
+    assert separated_stems(None) is None and separated_stems(tmp_path) is None
+    folder = tmp_path / "out" / "tune" / "separated" / DEFAULT_MODEL
+    folder.mkdir(parents=True)
+    assert separated_stems(song) is None  # no marker: not finished
+    (folder / "source.json").write_text(json.dumps(_fingerprint(song, DEFAULT_MODEL)))
+    assert separated_stems(song) == folder
+    song.write_bytes(b"y" * 20)  # another file under the same name
+    assert separated_stems(song) is None

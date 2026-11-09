@@ -44,6 +44,7 @@ from soloslot.gui.model import (
     build_song,
     cli_args,
     reveal_command,
+    separated_stems,
     stems_of,
 )
 from soloslot.gui.playerpanel import PlayerPanel
@@ -119,6 +120,7 @@ class MainWindow(QMainWindow):
         self._worker: Worker | None = None
         self._checks: dict[str, QCheckBox] = {}
         self._preview_path: Path | None = None
+        self._stems_folder: Path | None = None  # where the last run left the split stems
 
         root = QWidget()
         self.setCentralWidget(root)
@@ -350,7 +352,10 @@ class MainWindow(QMainWindow):
         text = self.source.text().strip()
         names = stems_of(Path(text)) if text and Path(text).exists() else DEFAULT_STEMS
         self._set_stems(names or DEFAULT_STEMS)
-        self._load_preview(Path(text) if text and Path(text).exists() else None)
+        path = Path(text) if text and Path(text).exists() else None
+        out = self.output.text().strip()
+        # A song that was split before plays from its stems, so A/B works right away.
+        self._load_preview(separated_stems(path, Path(out) if out else None) or path)
 
     def _load_preview(self, path: Path | None) -> None:
         if path is None:
@@ -358,9 +363,18 @@ class MainWindow(QMainWindow):
             return
         self.panel.set_loading()
         self._preview_path = path
-        self._run_task(lambda: load_stems(path), lambda r, e, p=path: self._preview_loaded(p, r, e))
 
-    def _preview_loaded(self, path: Path, stems, error: str) -> None:
+        def work():  # runs on a worker thread
+            try:
+                return path, load_stems(path), ""
+            except Exception as e:
+                return path, None, f"{type(e).__name__}: {e}"
+
+        # A bound method (not a lambda), so the result is handled on the GUI thread.
+        self._run_task(work, self._preview_loaded)
+
+    def _preview_loaded(self, result, _error: str) -> None:
+        path, stems, error = result
         if path != self._preview_path:
             return  # the user picked something else meanwhile
         if error or stems is None:
@@ -411,6 +425,7 @@ class MainWindow(QMainWindow):
         self.log.clear()
         self.open_output.setVisible(False)
         self._result = backing_track_path(song)
+        self._stems_folder = song.folder if song.input is not None else None
         self.start.setEnabled(False)
         self.progress.setRange(0, 0)  # busy indicator
         self._thread = QThread()
@@ -456,6 +471,8 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "soloslot", "Failed. See Details for the reason.")
         else:
             self.log.appendPlainText("\nDone.")
+            if self._stems_folder is not None and self._stems_folder.is_dir():
+                self._load_preview(self._stems_folder)  # the split stems unlock A/B
             self.open_output.setVisible(self._result is not None)
 
     def _open_output(self) -> None:

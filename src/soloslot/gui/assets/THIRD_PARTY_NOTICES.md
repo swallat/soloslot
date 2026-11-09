@@ -1,5 +1,13 @@
 # Licenses
 
+## Use only with material you have the rights to
+
+soloslot is a tool for processing audio. Use it only with recordings and other material for
+which you own the necessary rights or have the permission of the rights holders (for example
+for private practice with your own recordings or licensed material). You alone are responsible
+for how you use the software and for the files you process, separate and share. This notice
+does not change the license terms below.
+
 ## soloslot
 
 Copyright (c) 2026 Sebastian Wallat. soloslot is released under the **MIT License**

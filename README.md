@@ -257,6 +257,10 @@ and [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 [MIT](LICENSE) © 2026 Sebastian Wallat.
 
+**Use only with material you have the rights to.** Use soloslot only with recordings and other
+material for which you own the necessary rights or have the permission of the rights holders.
+You are responsible for how you use it. This notice does not change the MIT license.
+
 soloslot installs these libraries, which keep their own licenses: click (BSD-3-Clause), NumPy
 (BSD-3-Clause and other permissive licenses) and python-soundfile (BSD-3-Clause), whose binary
 wheels include libsndfile (LGPL-2.1-or-later) with its MP3 codecs LAME and mpg123 (both

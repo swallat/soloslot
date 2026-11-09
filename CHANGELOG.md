@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- GUI: a Separate stems only button splits a song without building a backing track and loads
+  the stems into the player, so you can set the slots and compare A/B before creating the
+  track. The command line has the same as `--separate-only` (no `--solo` needed).
+
 ### Changed
 - Player: the playhead is easy to grab and move. It has a handle (flag) at the top and a wider
   grab zone, the cursor changes to a resize cursor over it, and it wins over a slot edge that

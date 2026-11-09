@@ -86,6 +86,18 @@ def _separate(song: Song, *, dry_run: bool, log: Callable[[str], None]) -> bool 
     return None
 
 
+def separate_only(song: Song, *, log: Callable[[str], None] = print) -> bool:
+    """Only split `song.input` into stems (no backing track). False if it failed (logged)."""
+    log(f"\n=== {song.name} ===")
+    if song.input is None:
+        log("  ERROR: nothing to separate: the song has no input file")
+        return False
+    if _separate(song, dry_run=False, log=log) is False:
+        return False
+    log(f"  Stems: {song.folder}")
+    return True
+
+
 def process_song(song: Song, *, dry_run: bool = False, log: Callable[[str], None] = print) -> bool:
     """Process one song. Returns False (after logging why) if it could not be done."""
     log(f"\n=== {song.name} ===")

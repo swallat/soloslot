@@ -220,3 +220,24 @@ def test_config_stems_off_and_nothing_to_write(tmp_path: Path) -> None:
     cfg.write_text(body + "mixdown = false\n", encoding="utf-8")
     with pytest.raises(ConfigError):
         load_config(cfg)
+
+
+def test_separate_only_writes_stems_but_no_backing_track(song: Path, calls: list[Path]) -> None:
+    result = run(song, "--separate-only")
+    assert result.exit_code == 0, result.output
+    folder = song.parent / "out" / "Song" / "separated" / "htdemucs_6s"
+    assert sorted(p.stem for p in folder.glob("*.flac")) == sorted(STEMS)
+    assert not list((song.parent / "out" / "Song").glob("*Backing Track*"))
+    assert "Stems:" in result.output
+    assert len(calls) == 1
+    run(song, "--solo", "2-6", "--mute", "guitar")  # the later full run reuses the stems
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("extra", [["--solo", "1-2"], ["--mute", "guitar"], ["--dry-run"]])
+def test_separate_only_rejects_backing_track_options(
+    song: Path, calls: list[Path], extra: list[str]
+) -> None:
+    result = run(song, "--separate-only", *extra)
+    assert result.exit_code == 2
+    assert not calls

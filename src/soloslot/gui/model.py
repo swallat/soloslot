@@ -105,6 +105,32 @@ def cli_args(form: Form) -> list[str]:
     return args
 
 
+def separation_song(form: Form) -> Song:
+    """The song for 'only split into stems': needs an audio file, no solos or muted stems."""
+    if form.source is None or form.source.is_dir():
+        raise ConfigError("choose an audio file to split into stems")
+    return song_from_audio(
+        form.source,
+        [{"start": "0", "end": "1"}],  # placeholder; separation does not use the solos
+        output=form.output,
+        model=form.model,
+    )
+
+
+def separate_args(form: Form) -> list[str]:
+    """The `soloslot` command line that only separates (used to run separation externally)."""
+    song = separation_song(form)
+    assert form.source is not None
+    return [
+        str(form.source),
+        "--separate-only",
+        "--model",
+        form.model,
+        "--output",
+        str(song.output),
+    ]
+
+
 def backing_track_path(song: Song) -> Path:
     """Where `process_song` writes the backing track."""
     return song.output / f"{song.name} - Backing Track.{song.format}"

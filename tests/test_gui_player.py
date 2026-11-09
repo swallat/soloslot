@@ -359,6 +359,21 @@ def test_playhead_can_be_grabbed_by_its_handle_and_line_and_dragged(tmp_path, ap
     assert wave.slots == []  # no slot was created by the drag
 
 
+def test_playhead_handle_follows_the_line_to_both_edges(tmp_path, app):
+    panel = _panel(tmp_path, app)
+    wave = panel.wave
+    w = wave.width()
+    # at the start the pennant hangs right of the line; at the end it flips to the left
+    assert wave._flag_span(1.0) == (1.0, 1.0 + 16)
+    assert wave._flag_span(w - 1.0) == (w - 1.0 - 16, w - 1.0)
+    panel.player.seek(0.0)
+    assert wave._on_playhead(1, 20) and wave._on_playhead(10, 4)  # the flag is next to the line
+    assert not wave._on_playhead(60, 4)
+    panel.player.seek(panel.stems.duration)
+    assert wave._on_playhead(w - 1, 20) and wave._on_playhead(w - 10, 4)
+    assert not wave._on_playhead(w - 60, 4)
+
+
 def test_playhead_wins_over_a_slot_edge_next_to_it(tmp_path, app):
     panel = _panel(tmp_path, app)
     wave = panel.wave

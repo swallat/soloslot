@@ -180,34 +180,44 @@ class WaveformView(QWidget):
                 p.setPen(pal.placeholderText().color())
                 p.drawText(QPointF(self.width() - 6 - 8 * len(label), top + 13), label)
                 p.setPen(QPen(pal.text().color(), 1))
-        # playhead
-        x = self._x(self.playhead)
+        # playhead: a line with a pennant at the top that hangs on the line, so it moves exactly
+        # with it, also at the edges (the pennant flips to the other side there)
+        x = min(max(self._x(self.playhead), 1.0), self.width() - 1.0)  # keep the line visible
         red = QColor("#e5484d")
         p.setPen(QPen(red, 2))
         p.drawLine(QPointF(x, 0), QPointF(x, h))
-        p.setBrush(red)  # the handle: a flag at the top
-        half = HANDLE_W / 2
-        x = min(max(x, half), self.width() - half)  # keep the whole flag visible at the edges
+        p.setBrush(red)
+        left, right = self._flag_span(x)
         p.drawPolygon(
             QPolygonF(
                 [
-                    QPointF(x - half, 0),
-                    QPointF(x + half, 0),
-                    QPointF(x + half, HANDLE_H * 0.55),
+                    QPointF(left, 0),
+                    QPointF(right, 0),
+                    QPointF(right, HANDLE_H * 0.55),
                     QPointF(x, HANDLE_H),
-                    QPointF(x - half, HANDLE_H * 0.55),
+                    QPointF(left, HANDLE_H * 0.55),
                 ]
             )
         )
         p.setBrush(Qt.BrushStyle.NoBrush)
+
+    def _flag_span(self, x: float) -> tuple[float, float]:
+        """Horizontal extent of the pennant for a playhead line at `x`: it hangs to the right of
+        the line, or to the left when there is no room."""
+        if x + HANDLE_W <= self.width():
+            return x, x + HANDLE_W
+        return x - HANDLE_W, x
 
     # -- mouse
     def _on_playhead(self, x: float, y: float) -> bool:
         """Whether (x, y) grabs the playhead: its line, or (wider) its handle at the top."""
         if self.peaks is None or not self.duration:
             return False
-        dx = abs(x - self._x(self.playhead))
-        return dx <= PLAYHEAD_GRAB_PX or (y <= HANDLE_H + 4 and dx <= HANDLE_W / 2 + 2)
+        line = min(max(self._x(self.playhead), 1.0), self.width() - 1.0)
+        left, right = self._flag_span(line)
+        return abs(x - line) <= PLAYHEAD_GRAB_PX or (
+            y <= HANDLE_H + 4 and left - 2 <= x <= right + 2
+        )
 
     def mousePressEvent(self, e: QMouseEvent) -> None:
         if not self.duration or e.button() != Qt.MouseButton.LeftButton:

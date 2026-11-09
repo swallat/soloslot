@@ -10,6 +10,10 @@ All notable changes to this project are documented here. The format follows
 - Player: the usual transport buttons (previous, back 5 s, play/pause, stop, forward 5 s, next).
   Previous and next jump between the slot starts.
 
+### Fixed
+- Windows installer: the notices page showed raw Markdown (`#`, `**`, `<links>`). The installer now
+  shows a plain-text version generated at build time.
+
 ## [0.4.3] - 2026-11-09
 
 ### Fixed

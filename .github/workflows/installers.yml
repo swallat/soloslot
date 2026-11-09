@@ -25,7 +25,7 @@ jobs:
             name: windows
           - os: macos-latest
             name: macos
-          - os: ubuntu-22.04 # older glibc: the AppImage runs on more distributions
+          - os: ubuntu-22.04 # deliberately not the newest LTS: an AppImage needs the oldest glibc we want to support
             name: linux
     steps:
       - uses: actions/checkout@v7
@@ -57,7 +57,9 @@ jobs:
       - name: Windows installer (Inno Setup)
         if: matrix.name == 'windows'
         shell: pwsh
-        run: iscc /DAppVersion=${{ steps.v.outputs.version }} packaging\windows\soloslot.iss
+        run: |
+          python packaging/notices_txt.py build/THIRD_PARTY_NOTICES.txt
+          iscc /DAppVersion=${{ steps.v.outputs.version }} packaging\windows\soloslot.iss
 
       - name: macOS disk image
         if: matrix.name == 'macos'

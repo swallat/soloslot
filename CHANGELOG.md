@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Added a notice that soloslot may only be used with material the user has the rights to, in the
+  README, the license/notices page (Help > About, AppImage docs) and as an extra Windows installer
+  page that also shows the third-party licenses.
+
 ## [0.4.2] - 2026-11-09
 
 ### Fixed

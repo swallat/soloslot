@@ -17,6 +17,7 @@ WizardImageFile=..\icons\wizard.bmp,..\icons\wizard@2x.bmp
 WizardSmallImageFile=..\icons\wizard-small.bmp,..\icons\wizard-small@2x.bmp
 UninstallDisplayIcon={app}\soloslot.exe
 LicenseFile=..\..\LICENSE
+InfoBeforeFile=..\..\src\soloslot\gui\assets\THIRD_PARTY_NOTICES.md
 OutputDir=..\..\installers
 OutputBaseFilename=soloslot-{#AppVersion}-windows-setup
 UninstallDisplayName=soloslot

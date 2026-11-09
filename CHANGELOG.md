@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Player: at the left and right edge the playhead's handle stayed put while the line kept
+  moving. The handle now hangs on the line and flips to the other side when there is no room,
+  so it follows the playhead all the way to both ends.
+
 ## [0.4.6] - 2026-11-09
 
 ### Added

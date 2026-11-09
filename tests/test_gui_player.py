@@ -16,6 +16,7 @@ from soloslot.config import Solo
 from soloslot.gui import regions as rg
 from soloslot.gui.player import Player
 from soloslot.gui.playerpanel import PlayerPanel
+from soloslot.gui.waveform import MIN_VIEW
 
 RATE = 1000
 
@@ -46,6 +47,10 @@ class FakeOutput:
         return len(data)
 
     def processed_us(self):
+        return self.played_us
+
+    def flush(self):
+        self.data.clear()
         return self.played_us
 
 
@@ -219,3 +224,92 @@ def test_transport_buttons_are_off_without_a_song(app):
     panel = PlayerPanel(Player(FakeOutput))
     for b in (panel.prev_btn, panel.back_btn, panel.play_btn, panel.stop_btn, panel.next_btn):
         assert not b.isEnabled()
+
+
+def test_swap_audio_keeps_playing_without_restarting_the_output(app):
+    p = Player(FakeOutput)
+    p.set_audio(_audio(), RATE)
+    p.play(2.0)
+    out = FakeOutput.instances[-1]
+    out.played_us = 500_000
+    p.swap_audio(_audio() * 0.5)
+    assert FakeOutput.instances[-1] is out and p.playing
+    assert p.position() == pytest.approx(2.5)
+    # what is queued now comes from the new audio, starting at the same position
+    first = np.frombuffer(bytes(out.data[:4]), dtype="<i2")
+    assert first[0] == pytest.approx(0.25 * 32767, abs=2)
+    out.played_us = 1_000_000
+    assert p.position() == pytest.approx(3.0)
+    with pytest.raises(ValueError):
+        p.swap_audio(_audio(5))
+
+
+def test_ab_switch_is_instant_and_keeps_the_position(tmp_path, app):
+    panel = _panel(tmp_path, app)
+    panel.set_slots([Solo(2, 4)])
+    panel.set_muted(("piano",))
+    panel._rebuild()
+    panel.player.seek(3.0)
+    panel.player.play()
+    out = FakeOutput.instances[-1]
+    assert panel.gaps.isChecked()
+    panel.toggle_ab()  # B -> A
+    assert panel.original.isChecked()
+    assert FakeOutput.instances[-1] is out  # no restart
+    assert panel.player.playing and panel.player.position() == pytest.approx(3.0)
+    assert panel.player._audio[3000, 0] == pytest.approx(0.3, abs=1e-3)  # original again
+    panel.toggle_ab()  # A -> B
+    assert panel.player._audio[3000, 0] == pytest.approx(0.1, abs=1e-3)  # piano is gone
+
+
+def test_edits_pending_are_rendered_when_switching(tmp_path, app):
+    panel = _panel(tmp_path, app)
+    panel.original.setChecked(True)
+    panel.set_muted(("piano",))
+    panel.set_slots([Solo(2, 4)])  # starts the debounce timer
+    assert panel._timer.isActive()
+    panel.gaps.setChecked(True)
+    assert not panel._timer.isActive()
+    assert panel.player._audio[3000, 0] == pytest.approx(0.1, abs=1e-3)
+
+
+def test_ab_is_off_for_a_single_file(tmp_path, app):
+    f = tmp_path / "song.wav"
+    sf.write(f, np.full((RATE * 2, 2), 0.2, dtype="float32"), RATE)
+    panel = PlayerPanel(Player(FakeOutput))
+    panel.set_stems(rg.load_stems(f))
+    assert not panel.ab_btn.isEnabled() and not panel.gaps.isEnabled()
+    panel.toggle_ab()
+    assert panel.original.isChecked()
+
+
+def test_ctrl_wheel_zooms_around_the_mouse_and_wheel_scrolls(tmp_path, app):
+    from PySide6.QtCore import QPoint
+    from PySide6.QtGui import QWheelEvent
+
+    panel = _panel(tmp_path, app)
+    wave = panel.wave
+    assert wave.view_len == pytest.approx(10.0)
+
+    def wheel(dy, x, modifiers):
+        pos = QPointF(x, 20)
+        event = QWheelEvent(
+            pos, wave.mapToGlobal(pos), QPoint(0, 0), QPoint(0, dy),
+            Qt.MouseButton.NoButton, modifiers, Qt.ScrollPhase.NoScrollPhase, False,
+        )  # fmt: skip
+        QApplication.sendEvent(wave, event)
+
+    x = wave.width() * 0.5  # the mouse is over 5.0 s
+    wheel(120, x, Qt.KeyboardModifier.ControlModifier)
+    assert wave.view_len < 10.0
+    assert wave.view_start < 5.0 < wave.view_start + wave.view_len  # 5 s stays in view
+    assert wave._x(5.0) == pytest.approx(x, abs=1.5)  # and stays under the mouse
+    for _ in range(20):
+        wheel(120, x, Qt.KeyboardModifier.ControlModifier)
+    assert wave.view_len == pytest.approx(MIN_VIEW)
+    start = wave.view_start
+    wheel(-120, x, Qt.KeyboardModifier.NoModifier)  # wheel without Ctrl scrolls
+    assert wave.view_start > start
+    for _ in range(40):
+        wheel(-120, x, Qt.KeyboardModifier.ControlModifier)
+    assert wave.view_len == pytest.approx(10.0)  # zoomed out again: the whole song

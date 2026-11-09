@@ -9,6 +9,8 @@ All notable changes to this project are documented here. The format follows
 ### Added
 - Player: the usual transport buttons (previous, back 5 s, play/pause, stop, forward 5 s, next).
   Previous and next jump between the slot starts.
+- Player: A/B comparison of the original and the result with gaps. The A/B button (or the B key)
+  switches at the same position without a gap or restart; both versions are kept in memory.
 
 ### Fixed
 - Windows installer: the notices page showed raw Markdown (`#`, `**`, `<links>`). The installer now

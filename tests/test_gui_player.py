@@ -187,3 +187,35 @@ def test_stem_lanes_are_optional(tmp_path, app):
     panel.wave.grab()  # paints with lanes without error
     panel.show_stems.setChecked(False)
     assert panel.wave.minimumHeight() == base
+
+
+def test_transport_buttons(tmp_path, app):
+    panel = _panel(tmp_path, app)
+    panel.set_slots([Solo(3, 4), Solo(6, 7)])
+    for b in (panel.prev_btn, panel.back_btn, panel.play_btn, panel.stop_btn, panel.fwd_btn):
+        assert b.isEnabled() and not b.icon().isNull()
+    panel.next_btn.click()
+    assert panel.player.position() == pytest.approx(3.0)
+    panel.next_btn.click()
+    assert panel.player.position() == pytest.approx(6.0)
+    panel.back_btn.click()
+    assert panel.player.position() == pytest.approx(1.0)
+    panel.fwd_btn.click()
+    assert panel.player.position() == pytest.approx(6.0)
+    panel.fwd_btn.click()
+    panel.fwd_btn.click()  # stays inside the song
+    assert panel.player.position() == pytest.approx(10.0)
+    panel.prev_btn.click()
+    assert panel.player.position() == pytest.approx(6.0)
+    panel.play_btn.click()
+    assert panel.player.playing
+    panel.play_btn.click()
+    assert not panel.player.playing
+    panel.stop_btn.click()
+    assert panel.player.position() == 0
+
+
+def test_transport_buttons_are_off_without_a_song(app):
+    panel = PlayerPanel(Player(FakeOutput))
+    for b in (panel.prev_btn, panel.back_btn, panel.play_btn, panel.stop_btn, panel.next_btn):
+        assert not b.isEnabled()

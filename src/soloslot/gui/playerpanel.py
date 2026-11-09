@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
 
 from soloslot.config import Solo
 from soloslot.gui import regions as rg
+from soloslot.gui.branding import INK
+from soloslot.gui.icons import transport_icon
 from soloslot.gui.player import Player
 from soloslot.gui.waveform import WaveformView
 
@@ -36,8 +38,13 @@ class PlayerPanel(QWidget):
         self.fade_ms = DEFAULT_FADE_MS
 
         self.wave = WaveformView()
-        self.play_btn = QPushButton("Play")
-        self.stop_btn = QPushButton("Stop")
+        self.prev_btn = self._transport("previous", "Previous slot start (or song start)")
+        self.back_btn = self._transport("rewind", f"Back {rg.SKIP:g} s")
+        self.play_btn = self._transport("play", "Play (Space)")
+        self.play_btn.setObjectName("transportMain")
+        self.stop_btn = self._transport("stop", "Stop")
+        self.fwd_btn = self._transport("forward", f"Forward {rg.SKIP:g} s")
+        self.next_btn = self._transport("next", "Next slot start (or song end)")
         self.slot_btn = QPushButton("Preview slot")
         self.slot_btn.setToolTip(
             f"Play the selected slot (or the first) with {rg.PREVIEW_PAD:g} s before and after"
@@ -64,24 +71,31 @@ class PlayerPanel(QWidget):
         zoom_in.setFixedWidth(34)
 
         row = QHBoxLayout()
+        row.setSpacing(6)
         for w in (
+            self.prev_btn,
+            self.back_btn,
             self.play_btn,
             self.stop_btn,
+            self.fwd_btn,
+            self.next_btn,
             self.slot_btn,
-            self.original,
-            self.gaps,
-            self.show_stems,
         ):
             row.addWidget(w)
         row.addStretch(1)
         row.addWidget(self.time)
         for w in (zoom_out, zoom_in, fit):
             row.addWidget(w)
+        options = QHBoxLayout()
+        for w in (self.original, self.gaps, self.show_stems):
+            options.addWidget(w)
+        options.addStretch(1)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
         layout.addWidget(self.wave)
         layout.addLayout(row)
+        layout.addLayout(options)
         layout.addWidget(self.hint)
 
         self._timer = QTimer(self)
@@ -91,6 +105,10 @@ class PlayerPanel(QWidget):
 
         self.play_btn.clicked.connect(self.toggle_play)
         self.stop_btn.clicked.connect(self.player.stop)
+        self.prev_btn.clicked.connect(self.previous)
+        self.back_btn.clicked.connect(lambda: self.skip(-rg.SKIP))
+        self.fwd_btn.clicked.connect(lambda: self.skip(rg.SKIP))
+        self.next_btn.clicked.connect(self.next)
         self.slot_btn.clicked.connect(self.preview_slot)
         self.original.toggled.connect(self._schedule)
         zoom_out.clicked.connect(lambda: self.wave.zoom(0.8))
@@ -149,6 +167,39 @@ class PlayerPanel(QWidget):
             self.muted = muted
             self._schedule()
 
+    # -- transport
+    def _transport(self, kind: str, tip: str) -> QPushButton:
+        pal = self.palette()
+        if not hasattr(self, "_icons"):
+            self._icons: dict[str, QIcon] = {}
+        ink = QColor(INK) if kind == "play" else pal.buttonText().color()
+        off = pal.mid().color()
+        self._icons[kind] = transport_icon(kind, ink, off)
+        if kind == "play":  # the pause icon shares the amber button, so it uses the same ink
+            self._icons["pause"] = transport_icon("pause", ink, off)
+        button = QPushButton()
+        button.setObjectName("transport")
+        button.setIcon(self._icons[kind])
+        button.setIconSize(QSize(20, 20))
+        button.setToolTip(tip)
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+        button.setFixedWidth(40)
+        return button
+
+    def skip(self, seconds: float) -> None:
+        """Move the playhead by `seconds`, staying inside the song."""
+        if self.stems is not None:
+            self.player.seek(min(max(self.player.position() + seconds, 0.0), self.stems.duration))
+
+    def previous(self) -> None:
+        if self.stems is not None:
+            self.player.seek(rg.previous_marker(self.wave.slots, self.player.position()))
+
+    def next(self) -> None:
+        if self.stems is not None:
+            pos = self.player.position()
+            self.player.seek(rg.next_marker(self.wave.slots, pos, self.stems.duration))
+
     # -- playback
     def toggle_play(self) -> None:
         if self.stems is None:
@@ -200,12 +251,15 @@ class PlayerPanel(QWidget):
         self.wave.set_playhead(seconds)
 
     def _state(self, playing: bool) -> None:
-        self.play_btn.setText("Pause" if playing else "Play")
+        self.play_btn.setIcon(self._icons["pause" if playing else "play"])
+        self.play_btn.setToolTip("Pause (Space)" if playing else "Play (Space)")
 
     def _update_buttons(self) -> None:
         ready = self.stems is not None
-        self.play_btn.setEnabled(ready)
-        self.stop_btn.setEnabled(ready)
+        for b in (self.prev_btn, self.back_btn, self.play_btn, self.stop_btn):
+            b.setEnabled(ready)
+        self.fwd_btn.setEnabled(ready)
+        self.next_btn.setEnabled(ready)
         self.slot_btn.setEnabled(ready and bool(self.wave.slots))
         self.gaps.setEnabled(ready and self.stems.can_mute)
         if ready and not self.stems.can_mute:

@@ -85,3 +85,13 @@ def test_single_file_cannot_be_muted(tmp_path):
     f = tmp_path / "song.wav"
     sf.write(f, np.zeros((100, 2), dtype="float32"), 44100)
     assert not rg.load_stems(f).can_mute
+
+
+def test_previous_and_next_markers_jump_between_slots():
+    slots = [Solo(10, 20), Solo(30, 40)]
+    assert rg.next_marker(slots, 0, 60) == 10
+    assert rg.next_marker(slots, 10, 60) == 30
+    assert rg.next_marker(slots, 35, 60) == 60  # no slot left: the song end
+    assert rg.previous_marker(slots, 35) == 30
+    assert rg.previous_marker(slots, 30.2) == 10  # just after a start: go to the one before
+    assert rg.previous_marker(slots, 5) == 0

@@ -7,6 +7,7 @@ import soundfile as sf
 pytest.importorskip("PySide6.QtWidgets", exc_type=ImportError)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from soloslot.gui.app import MainWindow
@@ -77,3 +78,56 @@ def test_window_has_the_logo_icon():
     w = MainWindow()
     assert not w.windowIcon().isNull()
     assert w.windowIcon().availableSizes()
+
+
+def _split(tmp_path):
+    """A song file and a finished split of it, as a run leaves them."""
+    import json
+
+    from soloslot.separate import DEFAULT_MODEL, _fingerprint
+
+    song = tmp_path / "tune.wav"
+    sf.write(song, np.zeros((44100, 2), dtype="float32"), 44100)
+    folder = tmp_path / "out" / "tune" / "separated" / DEFAULT_MODEL
+    folder.mkdir(parents=True)
+    for name in ("vocals", "drums"):
+        sf.write(folder / f"{name}.flac", np.full((44100, 2), 0.1, dtype="float32"), 44100)
+    (folder / "source.json").write_text(json.dumps(_fingerprint(song, DEFAULT_MODEL)))
+    return song, folder
+
+
+def _wait_for_preview(app, w):
+    for _ in range(200):
+        app.processEvents()
+        if w.panel.stems is not None:
+            return
+        QTest.qWait(10)
+
+
+def test_a_song_split_before_plays_from_its_stems(tmp_path):
+    app = QApplication.instance() or QApplication([])
+    song, _ = _split(tmp_path)
+    w = MainWindow()
+    w.source.setText(str(song))
+    w._refresh_stems()
+    _wait_for_preview(app, w)
+    assert w.panel.stems is not None and w.panel.stems.can_mute  # A/B is on
+    assert w.panel.ab_btn.isEnabled()
+
+
+def test_a_finished_run_loads_the_new_stems_into_the_player(tmp_path):
+    app = QApplication.instance() or QApplication([])
+    song = tmp_path / "tune.wav"
+    sf.write(song, np.zeros((44100, 2), dtype="float32"), 44100)
+    w = MainWindow()
+    w.source.setText(str(song))
+    w._refresh_stems()
+    _wait_for_preview(app, w)
+    assert not w.panel.stems.can_mute  # a single file: no A/B yet
+    _, folder = _split(tmp_path)  # the run splits the song
+    w._stems_folder = folder
+    w.panel.stems = None
+    w._done(True)
+    _wait_for_preview(app, w)
+    assert w.panel.stems.can_mute
+    assert w.panel.ab_btn.isEnabled()

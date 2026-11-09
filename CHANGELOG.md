@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Player: after a single song was split, the player kept showing the song and A/B stayed off. It
+  now loads the split stems when the run finishes, and also when a song that was split before is
+  chosen again (same file and model), so A/B and the stem view work right away.
+- Player: the waveform result of loading was handled on the worker thread; it now arrives on the
+  GUI thread.
+
 ## [0.4.4] - 2026-11-09
 
 ### Added

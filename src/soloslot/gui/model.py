@@ -9,7 +9,7 @@ from pathlib import Path
 from soloslot.audio import stem_label
 from soloslot.config import ConfigError, Solo, Song, parse_time, song_from_audio
 from soloslot.process import find_audio_files
-from soloslot.separate import DEFAULT_MODEL, MODEL_STEMS
+from soloslot.separate import DEFAULT_MODEL, MODEL_STEMS, is_cached
 
 # Shown when the stems of an audio file are not known yet (they depend on the model).
 DEFAULT_STEMS = MODEL_STEMS[DEFAULT_MODEL]
@@ -52,6 +52,19 @@ def stems_of(source: Path | None, model: str = DEFAULT_MODEL) -> tuple[str, ...]
     if source.is_dir():
         return tuple(stem_label(f) for f in find_audio_files(source))
     return MODEL_STEMS.get(model, ())
+
+
+def separated_stems(
+    source: Path | None, output: Path | None = None, model: str = DEFAULT_MODEL
+) -> Path | None:
+    """The folder with the stems of an audio file, if it was split before (same file and model).
+
+    This is where a run stores them, so the player can use them without splitting again.
+    """
+    if source is None or not source.is_file():
+        return None
+    song = song_from_audio(source, [{"start": 0, "end": 1}], output=output, model=model)
+    return song.folder if is_cached(source, song.folder, model) else None
 
 
 def build_song(form: Form) -> Song:

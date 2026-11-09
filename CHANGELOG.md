@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Player: the playhead is easy to grab and move. It has a handle (flag) at the top and a wider
+  grab zone, the cursor changes to a resize cursor over it, and it wins over a slot edge that
+  is next to it. Dragging moves the position (a playing song jumps when you let go); a click
+  on a free spot or inside a slot jumps there.
+
 ## [0.4.5] - 2026-11-09
 
 ### Fixed

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPen
+from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QMenu, QSizePolicy, QWidget
 
 from soloslot.config import Solo
@@ -12,6 +12,9 @@ from soloslot.gui import regions as rg
 
 GRAB_PX = 6  # how close to a slot edge the mouse grabs it
 CLICK_PX = 3  # smaller drags count as a click
+PLAYHEAD_GRAB_PX = 7  # grab distance of the playhead line; it wins over slot edges and bodies
+HANDLE_W = 16  # the playhead's handle at the top: wide and tall enough to hit easily
+HANDLE_H = 16
 MIN_VIEW = 2.0  # seconds; the most zoomed-in view
 
 
@@ -21,7 +24,8 @@ class WaveformView(QWidget):
     slot, mouse wheel scrolls, Ctrl+wheel zooms."""
 
     slotsChanged = Signal()
-    seekRequested = Signal(float)
+    seekRequested = Signal(float)  # a click, or the end of a playhead drag
+    scrub = Signal(float)  # while the playhead is dragged
     selectionChanged = Signal(int)  # index or -1
 
     def __init__(self) -> None:
@@ -68,6 +72,8 @@ class WaveformView(QWidget):
         self.update()
 
     def set_playhead(self, seconds: float) -> None:
+        if self._drag is not None and self._drag[0] == "playhead":
+            return  # the user holds the playhead; the player's position must not pull it away
         self.playhead = seconds
         if (
             self._drag is None
@@ -176,16 +182,42 @@ class WaveformView(QWidget):
                 p.setPen(QPen(pal.text().color(), 1))
         # playhead
         x = self._x(self.playhead)
-        p.setPen(QPen(QColor("#e5484d"), 2))
+        red = QColor("#e5484d")
+        p.setPen(QPen(red, 2))
         p.drawLine(QPointF(x, 0), QPointF(x, h))
+        p.setBrush(red)  # the handle: a flag at the top
+        half = HANDLE_W / 2
+        x = min(max(x, half), self.width() - half)  # keep the whole flag visible at the edges
+        p.drawPolygon(
+            QPolygonF(
+                [
+                    QPointF(x - half, 0),
+                    QPointF(x + half, 0),
+                    QPointF(x + half, HANDLE_H * 0.55),
+                    QPointF(x, HANDLE_H),
+                    QPointF(x - half, HANDLE_H * 0.55),
+                ]
+            )
+        )
+        p.setBrush(Qt.BrushStyle.NoBrush)
 
     # -- mouse
+    def _on_playhead(self, x: float, y: float) -> bool:
+        """Whether (x, y) grabs the playhead: its line, or (wider) its handle at the top."""
+        if self.peaks is None or not self.duration:
+            return False
+        dx = abs(x - self._x(self.playhead))
+        return dx <= PLAYHEAD_GRAB_PX or (y <= HANDLE_H + 4 and dx <= HANDLE_W / 2 + 2)
+
     def mousePressEvent(self, e: QMouseEvent) -> None:
         if not self.duration or e.button() != Qt.MouseButton.LeftButton:
             return
         self.setFocus()
         t = self._t(e.position().x())
         self._press_x = e.position().x()
+        if self._on_playhead(e.position().x(), e.position().y()):
+            self._drag = ("playhead", -1, t, None)  # before slots: it has priority
+            return
         hit = rg.hit_test(self.slots, t, self._px(GRAB_PX))
         if hit is None:
             self._drag = ("new", -1, t, None)
@@ -197,7 +229,15 @@ class WaveformView(QWidget):
 
     def mouseMoveEvent(self, e: QMouseEvent) -> None:
         t = self._t(e.position().x())
+        if self._drag is not None and self._drag[0] == "playhead":
+            self.playhead = t
+            self.scrub.emit(t)
+            self.update()
+            return
         if self._drag is None:
+            if self._on_playhead(e.position().x(), e.position().y()):
+                self.setCursor(Qt.CursorShape.SizeHorCursor)
+                return
             hit = rg.hit_test(self.slots, t, self._px(GRAB_PX))
             shape = Qt.CursorShape.ArrowCursor
             if hit:
@@ -232,7 +272,13 @@ class WaveformView(QWidget):
 
     def mouseReleaseEvent(self, e: QMouseEvent) -> None:
         drag, self._drag = self._drag, None
-        if drag and drag[0] == "new" and abs(e.position().x() - self._press_x) < CLICK_PX:
+        if not drag:
+            return
+        moved = abs(e.position().x() - self._press_x) >= CLICK_PX
+        if drag[0] == "playhead":
+            if moved:  # a drag: now move the real playback position
+                self.seekRequested.emit(self.playhead)
+        elif drag[0] in ("new", "body") and not moved:  # a click: jump there
             self.seekRequested.emit(self._t(e.position().x()))
 
     def keyPressEvent(self, e) -> None:

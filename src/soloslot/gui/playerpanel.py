@@ -124,6 +124,7 @@ class PlayerPanel(QWidget):
         fit.clicked.connect(self.wave.fit)
         self.wave.slotsChanged.connect(self._edited)
         self.wave.seekRequested.connect(self.player.seek)
+        self.wave.scrub.connect(self._scrub)
         self.wave.selectionChanged.connect(lambda _i: self._update_buttons())
         self.player.positionChanged.connect(self._position)
         self.player.stateChanged.connect(self._state)
@@ -283,9 +284,20 @@ class PlayerPanel(QWidget):
         (self.original if self.gaps.isChecked() else self.gaps).setChecked(True)
 
     def _position(self, seconds: float) -> None:
+        self._show_time(seconds)
+        self.wave.set_playhead(seconds)
+
+    def _show_time(self, seconds: float) -> None:
         total = self.stems.duration if self.stems else 0.0
         self.time.setText(f"{rg.format_time(seconds)} / {rg.format_time(total)}")
-        self.wave.set_playhead(seconds)
+
+    def _scrub(self, seconds: float) -> None:
+        """The playhead is being dragged: follow it silently while playing (the seek happens on
+        release, so the audio does not restart on every pixel), or move it right away if paused."""
+        if self.player.playing:
+            self._show_time(seconds)
+        else:
+            self.player.seek(seconds)
 
     def _state(self, playing: bool) -> None:
         self.play_btn.setIcon(self._icons["pause" if playing else "play"])

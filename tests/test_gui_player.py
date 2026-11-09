@@ -313,3 +313,89 @@ def test_ctrl_wheel_zooms_around_the_mouse_and_wheel_scrolls(tmp_path, app):
     for _ in range(40):
         wheel(-120, x, Qt.KeyboardModifier.ControlModifier)
     assert wave.view_len == pytest.approx(10.0)  # zoomed out again: the whole song
+
+
+def _hover(wave, x, y=20):
+    from PySide6.QtCore import QEvent
+    from PySide6.QtGui import QMouseEvent
+
+    pos = QPointF(x, y)
+    event = QMouseEvent(
+        QEvent.Type.MouseMove, pos, wave.mapToGlobal(pos),
+        Qt.MouseButton.NoButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier,
+    )  # fmt: skip
+    QApplication.sendEvent(wave, event)
+
+
+def _mouse(wave, kind, x, y=20):
+    pos = QPointF(x, y).toPoint()
+    if kind == "press":
+        QTest.mousePress(wave, Qt.MouseButton.LeftButton, pos=pos)
+    elif kind == "move":
+        QTest.mouseMove(wave, pos)
+    else:
+        QTest.mouseRelease(wave, Qt.MouseButton.LeftButton, pos=pos)
+
+
+def test_playhead_can_be_grabbed_by_its_handle_and_line_and_dragged(tmp_path, app):
+    panel = _panel(tmp_path, app)
+    wave = panel.wave
+    w = wave.width()
+    panel.player.seek(5.0)
+    px = wave._x(5.0)
+    # hover: the cursor says "drag me", on the line and on the handle
+    _hover(wave, px + 5)
+    assert wave.cursor().shape() == Qt.CursorShape.SizeHorCursor
+    _hover(wave, px + 8, y=4)  # the handle is wider than the line
+    assert wave.cursor().shape() == Qt.CursorShape.SizeHorCursor
+    _hover(wave, px + 40)
+    assert wave.cursor().shape() == Qt.CursorShape.ArrowCursor
+    # drag it from the handle, while paused: the position follows
+    _mouse(wave, "press", px + 7, y=5)
+    _mouse(wave, "move", w * 0.8)
+    assert panel.player.position() == pytest.approx(8.0, abs=0.1)
+    _mouse(wave, "release", w * 0.8)
+    assert panel.player.position() == pytest.approx(8.0, abs=0.1)
+    assert wave.slots == []  # no slot was created by the drag
+
+
+def test_playhead_wins_over_a_slot_edge_next_to_it(tmp_path, app):
+    panel = _panel(tmp_path, app)
+    wave = panel.wave
+    panel.set_slots([Solo(5, 7)])
+    panel.player.seek(5.0)  # exactly on the slot's start edge
+    px = wave._x(5.0)
+    _mouse(wave, "press", px + 2)
+    _mouse(wave, "move", px + 60)
+    _mouse(wave, "release", px + 60)
+    assert wave.slots == [Solo(5, 7)]  # the slot did not change
+    assert panel.player.position() > 5.5  # the playhead moved
+
+
+def test_dragging_the_playhead_while_playing_seeks_only_on_release(tmp_path, app):
+    panel = _panel(tmp_path, app)
+    wave = panel.wave
+    panel.player.play(2.0)
+    out = FakeOutput.instances[-1]
+    px = wave._x(2.0)
+    _mouse(wave, "press", px, y=5)
+    _mouse(wave, "move", px + 100)
+    _mouse(wave, "move", px + 200)
+    assert FakeOutput.instances[-1] is out  # the audio was not restarted while dragging
+    assert panel.time.text().startswith(rg.format_time(wave._t(px + 200)))  # the label follows
+    _mouse(wave, "release", px + 200)
+    assert panel.player.playing
+    assert panel.player.position() == pytest.approx(wave._t(px + 200), abs=0.2)
+
+
+def test_clicking_a_slot_or_empty_space_jumps_there(tmp_path, app):
+    panel = _panel(tmp_path, app)
+    wave = panel.wave
+    panel.set_slots([Solo(2, 4)])
+    _mouse(wave, "press", wave._x(3.0))
+    _mouse(wave, "release", wave._x(3.0))  # a click inside a slot
+    assert panel.player.position() == pytest.approx(3.0, abs=0.1)
+    assert wave.slots == [Solo(2, 4)]
+    _mouse(wave, "press", wave._x(8.0))
+    _mouse(wave, "release", wave._x(8.0))  # a click on a free spot
+    assert panel.player.position() == pytest.approx(8.0, abs=0.1)

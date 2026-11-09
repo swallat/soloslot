@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import subprocess
 import sys
 import tarfile
@@ -156,25 +157,37 @@ def child_env(environ: dict[str, str] | None = None) -> dict[str, str]:
     return env
 
 
-def python_dir_candidates(
-    root: Path, platform: str | None = None, environ: dict[str, str] | None = None
-) -> list[Path]:
-    """Folders where uv may install its Python, most preferred first.
+def remove_stale_python_links(python_dir: Path) -> None:
+    """Delete `cpython-3.13-...` links uv left behind that can no longer be traversed.
 
-    uv links `cpython-3.13-...` to the real install with a junction/symlink. Windows refuses
-    that below an untrusted reparse point (os error 448: OneDrive/redirected AppData, ...), so
-    the resolved real path comes first, then a plain folder in the public profile.
+    A previous run may have created the minor-version link (a junction on Windows) that Windows
+    then refuses to follow (os error 448); uv would trip over it when looking for a Python.
     """
-    env = os.environ if environ is None else environ
-    found = [root / "python", Path(os.path.realpath(root)) / "python"]
-    if (platform or sys.platform).startswith("win"):
-        public = env.get("PUBLIC") or "C:/Users/Public"
-        found.append(Path(public) / "soloslot" / "python")
-    unique: list[Path] = []
-    for candidate in found:
-        if candidate not in unique:
-            unique.append(candidate)
-    return unique
+    if not python_dir.is_dir():
+        return
+    for entry in python_dir.glob("cpython-*"):
+        if re.match(r"cpython-\d+\.\d+-", entry.name) and not entry.exists():
+            for remove in (os.rmdir, os.unlink):  # a junction is a dir, a symlink a file
+                try:
+                    remove(entry)
+                    break
+                except OSError:
+                    continue
+
+
+def find_managed_python(python_dir: Path, version: str, platform: str | None = None) -> Path | None:
+    """The interpreter of the newest `cpython-<version>.<patch>-...` uv unpacked, or None.
+
+    It is addressed by its real (patch version) folder, never through the minor-version link.
+    """
+    windows = (platform or sys.platform).startswith("win")
+    exe = Path("python.exe") if windows else Path("bin") / "python"
+    found: list[tuple[int, Path]] = []
+    for entry in python_dir.glob(f"cpython-{version}.*-*"):
+        match = re.match(rf"cpython-{re.escape(version)}\.(\d+)-", entry.name)
+        if match and (entry / exe).is_file():
+            found.append((int(match.group(1)), entry / exe))
+    return max(found)[1] if found else None
 
 
 def is_link_error(output: str) -> bool:
@@ -282,12 +295,12 @@ def install_separation(
             )
         )
         root.parent.mkdir(parents=True, exist_ok=True)
-        candidates = python_dir_candidates(root.parent)
-        isolated = uv_env(root=root.parent, python_dir=candidates[0])
+        python_dir = root.parent / "python"
+        isolated = uv_env(root=root.parent, python_dir=python_dir)
         for index, (message, cmd) in enumerate(steps):
             log(message)
             if index == 0:  # creating the venv installs Python, which can hit os error 448
-                code = _run_venv_step(cmd, log, run, candidates, root.parent)
+                code = _run_venv_step(cmd, log, run, isolated, python_dir, py_version, root)
             else:
                 code = run(cmd, log, env=isolated)
             if code != 0:
@@ -302,24 +315,36 @@ def _run_venv_step(
     cmd: Sequence[str | Path],
     log: Log,
     run: Callable[..., int],
-    candidates: list[Path],
-    base: Path,
+    env: dict[str, str],
+    python_dir: Path,
+    py_version: str,
+    root: Path,
 ) -> int:
-    """Run the venv step, retrying in the next Python folder when Windows refuses the link."""
-    code = 1
-    for python_dir in candidates:
-        seen: list[str] = []
+    """Create the venv. If Windows refuses uv's Python link (os error 448), use the unpacked Python.
 
-        def tee(line: str, _seen: list[str] = seen) -> None:
-            _seen.append(line)
-            log(line)
+    uv downloads and unpacks Python completely before it creates the minor-version link, so
+    after that failure the real `cpython-<patch>` folder is intact. Retry with its exact path and
+    downloads off, so nothing is read through a link.
+    """
+    python_dir.mkdir(parents=True, exist_ok=True)
+    remove_stale_python_links(python_dir)
+    seen: list[str] = []
 
-        python_dir.mkdir(parents=True, exist_ok=True)
-        code = run(cmd, tee, env=uv_env(root=base, python_dir=python_dir))
-        if code == 0 or not is_link_error("\n".join(seen)):
-            return code
-        log(f"Could not link Python in {python_dir}; trying another folder ...")
-    return code
+    def tee(line: str) -> None:
+        seen.append(line)
+        log(line)
+
+    code = run(cmd, tee, env=env)
+    if code == 0 or not is_link_error("\n".join(seen)):
+        return code
+    remove_stale_python_links(python_dir)
+    python = find_managed_python(python_dir, py_version)
+    if python is None:
+        return code
+    log(f"Windows refused uv's Python link; using {python} directly ...")
+    direct = [*cmd]
+    direct[direct.index(py_version)] = str(python)
+    return run(direct, log, env={**env, "UV_PYTHON_DOWNLOADS": "never"})
 
 
 def run_separation(

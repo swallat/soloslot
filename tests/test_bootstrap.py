@@ -14,9 +14,10 @@ from soloslot.bootstrap import (
     data_dir,
     ensure_uv,
     env_python,
+    find_managed_python,
     install_separation,
     is_link_error,
-    python_dir_candidates,
+    remove_stale_python_links,
     run_separation,
     stream,
     uv_asset,
@@ -172,35 +173,68 @@ def test_is_link_error():
     assert not is_link_error("error: something else")
 
 
-def test_python_dir_candidates(tmp_path):
-    real = tmp_path / "real"
-    real.mkdir()
-    link = tmp_path / "link"
+def _fake_python(python_dir, name, windows=False):
+    exe = python_dir / name / ("python.exe" if windows else "bin/python")
+    exe.parent.mkdir(parents=True)
+    exe.write_text("")
+    return exe
+
+
+def test_find_managed_python_ignores_link_and_picks_newest(tmp_path):
+    (tmp_path / "cpython-3.13-linux-x86_64-gnu").mkdir()  # the minor-version link, no python
+    _fake_python(tmp_path, "cpython-3.13.9-linux-x86_64-gnu")
+    newest = _fake_python(tmp_path, "cpython-3.13.17-linux-x86_64-gnu")
+    _fake_python(tmp_path, "cpython-3.12.4-linux-x86_64-gnu")
+    assert find_managed_python(tmp_path, "3.13", "linux") == newest
+    assert find_managed_python(tmp_path, "3.11", "linux") is None
+    win = _fake_python(tmp_path, "cpython-3.14.1-windows-x86_64-none", windows=True)
+    assert find_managed_python(tmp_path, "3.14", "win32") == win
+
+
+def test_remove_stale_python_links(tmp_path):
+    target = tmp_path / "cpython-3.13.1-linux-x86_64-gnu"
+    target.mkdir()
+    broken = tmp_path / "cpython-3.13-linux-x86_64-gnu"
     try:
-        link.symlink_to(real, target_is_directory=True)
+        broken.symlink_to(tmp_path / "missing", target_is_directory=True)
     except OSError:
         pytest.skip("symlinks unavailable")
-    found = python_dir_candidates(link, "linux")
-    assert found == [link / "python", real / "python"]
-    win = python_dir_candidates(real, "win32", {"PUBLIC": "C:/Users/P"})
-    assert win[-1] == Path("C:/Users/P/soloslot/python")
+    good = tmp_path / "cpython-3.12-linux-x86_64-gnu"
+    good.symlink_to(target, target_is_directory=True)
+    remove_stale_python_links(tmp_path)
+    assert not broken.is_symlink()
+    assert good.is_symlink() and target.is_dir()
 
 
-def test_install_separation_retries_after_link_error(tmp_path, monkeypatch):
+def test_install_separation_uses_unpacked_python_after_link_error(tmp_path, monkeypatch):
     monkeypatch.setattr(bootstrap, "ensure_uv", lambda folder, **kw: Path("uv"))
-    monkeypatch.setattr(
-        bootstrap, "python_dir_candidates", lambda root: [tmp_path / "a", tmp_path / "b"]
-    )
-    dirs = []
+    monkeypatch.setattr(bootstrap, "python_version", lambda *a, **kw: "3.13")
+    calls = []
+    root = tmp_path / "env"
 
     def run(cmd, log, env=None):
-        dirs.append(env["UV_PYTHON_INSTALL_DIR"])
-        if len(dirs) == 1:
+        calls.append(([str(c) for c in cmd], env))
+        if len(calls) == 1:
+            _fake_python(tmp_path / "python", "cpython-3.13.17-linux-x86_64-gnu")
             log("error: Failed to create Python minor version link directory (os error 448)")
             return 2
         return 0
 
-    root = tmp_path / "env"
     install_separation("1.2.3", root=root, log=lambda _: None, run=run)
-    assert dirs[:2] == [str(tmp_path / "a"), str(tmp_path / "b")]
+    first, second = calls[0], calls[1]
+    assert "3.13" in first[0]
+    assert second[0][1:3] == ["venv", "--python"]
+    assert second[0][3].endswith("bin/python") and "cpython-3.13.17" in second[0][3]
+    assert second[1]["UV_PYTHON_DOWNLOADS"] == "never"
     assert (root / ".installed").exists()
+
+
+def test_install_separation_no_unpacked_python_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(bootstrap, "ensure_uv", lambda folder, **kw: Path("uv"))
+
+    def run(cmd, log, env=None):
+        log("error: ... (os error 448)")
+        return 2
+
+    with pytest.raises(SetupError):
+        install_separation("1.2.3", root=tmp_path / "env", log=lambda _: None, run=run)

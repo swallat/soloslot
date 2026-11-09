@@ -57,7 +57,9 @@ jobs:
       - name: Windows installer (Inno Setup)
         if: matrix.name == 'windows'
         shell: pwsh
-        run: iscc /DAppVersion=${{ steps.v.outputs.version }} packaging\windows\soloslot.iss
+        run: |
+          python packaging/notices_txt.py build/THIRD_PARTY_NOTICES.txt
+          iscc /DAppVersion=${{ steps.v.outputs.version }} packaging\windows\soloslot.iss
 
       - name: macOS disk image
         if: matrix.name == 'macos'

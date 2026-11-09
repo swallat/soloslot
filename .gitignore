@@ -28,3 +28,6 @@ htmlcov/
 installers/
 packaging/icons/
 *.spec
+
+# generated installer notices
+/build/

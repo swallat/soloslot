@@ -8,7 +8,7 @@ import click
 
 from soloslot import __version__
 from soloslot.config import OUTPUT_FORMATS, ConfigError, load_config, song_from_audio
-from soloslot.process import process_song
+from soloslot.process import process_song, separate_only
 from soloslot.separate import DEFAULT_MODEL
 
 DEFAULT_CONFIG = "solo.toml"
@@ -71,6 +71,12 @@ def _solo(value: str) -> dict[str, str]:
     is_flag=True,
     help="Write only the backing track, not the individual stems.",
 )
+@click.option(
+    "--separate-only",
+    "separate_only_",
+    is_flag=True,
+    help="Only split the audio file into stems; no solo region needed, no backing track.",
+)
 @click.option("--dry-run", is_flag=True, help="Show what would happen, write nothing.")
 @click.version_option(__version__, prog_name="soloslot")
 def main(
@@ -83,6 +89,7 @@ def main(
     fmt: str | None,
     output: Path | None,
     backing_only: bool,
+    separate_only_: bool,
     dry_run: bool,
 ) -> None:
     """Mute instruments in a solo section and build a play-along backing track.
@@ -115,7 +122,15 @@ def main(
                 "Pass a song or a config file (see solo.example.toml)."
             )
         configs = [default]
-    if audio and not solos:
+    if separate_only_:
+        if not audio or configs:
+            raise click.UsageError("--separate-only works on audio files, not on configs")
+        if solos or hear or mute or fmt or backing_only or dry_run:
+            raise click.UsageError(
+                "--separate-only takes no --solo, --hear, --mute, --format, --backing-only "
+                "or --dry-run"
+            )
+    elif audio and not solos:
         raise click.UsageError("give the solo region of the song with --solo START-END")
     if hear and mute:
         raise click.UsageError("use either --hear or --mute, not both")
@@ -126,7 +141,7 @@ def main(
     try:
         for config in configs:
             songs.extend(load_config(config))
-        regions = [_solo(s) for s in solos]
+        regions = [{"start": "0", "end": "1"}] if separate_only_ else [_solo(s) for s in solos]
         options = {k: v for k, v in (("model", model), ("format", fmt)) if v}
         if backing_only:
             options["stems"] = False
@@ -143,7 +158,10 @@ def main(
         if not songs:
             raise click.ClickException(f"song '{only}' not found")
 
-    ok = [process_song(s, dry_run=dry_run, log=click.echo) for s in songs]
+    if separate_only_:
+        ok = [separate_only(s, log=click.echo) for s in songs]
+    else:
+        ok = [process_song(s, dry_run=dry_run, log=click.echo) for s in songs]
     failed = len(ok) - sum(ok)
     click.echo(f"\nDone: {sum(ok)} song(s) ok, {failed} failed.")
     if failed:

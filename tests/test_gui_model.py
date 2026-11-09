@@ -5,7 +5,15 @@ import pytest
 import soundfile as sf
 
 from soloslot.config import ConfigError
-from soloslot.gui.model import Form, build_song, cli_args, parse_regions, stems_of
+from soloslot.gui.model import (
+    Form,
+    build_song,
+    cli_args,
+    parse_regions,
+    separate_args,
+    separation_song,
+    stems_of,
+)
 
 
 def test_parse_regions():
@@ -97,3 +105,21 @@ def test_separated_stems_finds_only_a_finished_split_of_this_file(tmp_path):
     assert separated_stems(song) == folder
     song.write_bytes(b"y" * 20)  # another file under the same name
     assert separated_stems(song) is None
+
+
+def test_separate_args(tmp_path):
+    audio = tmp_path / "song.wav"
+    sf.write(audio, np.zeros((4410, 2), dtype="float32"), 44100)
+    args = separate_args(Form(audio, "", (), model="htdemucs"))
+    assert args[:2] == [str(audio), "--separate-only"]
+    assert args[args.index("--model") + 1] == "htdemucs"
+    assert args[args.index("--output") + 1] == str((tmp_path / "out" / "song").resolve())
+    assert separation_song(Form(audio, "", ())).input is not None
+
+
+def test_separation_needs_an_audio_file(tmp_path):
+    _stems(tmp_path / "stems")
+    with pytest.raises(ConfigError):
+        separation_song(Form(tmp_path / "stems", "", ()))
+    with pytest.raises(ConfigError):
+        separation_song(Form(None, "", ()))

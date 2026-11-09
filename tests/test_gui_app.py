@@ -131,3 +131,36 @@ def test_a_finished_run_loads_the_new_stems_into_the_player(tmp_path):
     _wait_for_preview(app, w)
     assert w.panel.stems.can_mute
     assert w.panel.ab_btn.isEnabled()
+
+
+def test_separate_button_only_splits_and_loads_the_stems(tmp_path, monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    audio = tmp_path / "tune.wav"
+    sf.write(audio, np.zeros((44100, 2), dtype="float32"), 44100)
+    w = MainWindow()
+    assert not w.separate_btn.isEnabled()  # no song yet
+    w.source.setText(str(audio))
+    assert w.separate_btn.isEnabled()
+
+    stems = tmp_path / "out" / "tune" / "separated" / "htdemucs_6s"
+
+    def fake(song, log):
+        stems.mkdir(parents=True)
+        for name in ("piano", "bass"):
+            sf.write(stems / f"{name}.wav", np.zeros((44100, 2), dtype="float32"), 44100)
+        return True
+
+    monkeypatch.setattr("soloslot.gui.app.separate_song", fake)
+    loaded = []
+    monkeypatch.setattr(w, "_load_preview", loaded.append)
+    w._start_separation()
+    assert not w.separate_btn.isEnabled() and not w.start.isEnabled()  # busy
+    w._thread.wait(10000)
+    app.processEvents()
+    assert w.separate_btn.isEnabled() and w.start.isEnabled()
+    assert loaded == [stems]
+    assert w._result is None and not w.open_output.isVisibleTo(w)
+    assert "press Create backing track" in w.log.toPlainText()
+
+    w.source.setText(str(tmp_path))  # a folder is already split
+    assert not w.separate_btn.isEnabled()

@@ -44,12 +44,15 @@ from soloslot.gui.model import (
     build_song,
     cli_args,
     reveal_command,
+    separate_args,
     separated_stems,
+    separation_song,
     stems_of,
 )
 from soloslot.gui.playerpanel import PlayerPanel
 from soloslot.gui.regions import load_stems, slots_to_text, text_to_slots
 from soloslot.process import process_song
+from soloslot.process import separate_only as separate_song
 from soloslot.update import Update, UpdateError, check_for_update, download_update
 
 
@@ -227,12 +230,23 @@ class MainWindow(QMainWindow):
         self.start.setCursor(Qt.CursorShape.PointingHandCursor)
         self.start.clicked.connect(self._start)
         layout.addWidget(self.start)
+        self.separate_btn = QPushButton("Separate stems only")
+        self.separate_btn.setToolTip(
+            "Split the song into stems without building a backing track. The stems load "
+            "into the player, where you can set the slots and compare A/B."
+        )
+        self.separate_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.separate_btn.clicked.connect(self._start_separation)
+        layout.addWidget(self.separate_btn)
         self.open_output = QPushButton("Open output folder")
         self.open_output.setCursor(Qt.CursorShape.PointingHandCursor)
         self.open_output.setVisible(False)
         self.open_output.clicked.connect(self._open_output)
         layout.addWidget(self.open_output)
         self._result: Path | None = None
+        self._busy = False
+        self.source.textChanged.connect(lambda _t: self._update_separate_button())
+        self._update_separate_button()
         self.progress = QProgressBar()
         self.progress.setRange(0, 1)
         self.progress.setTextVisible(False)
@@ -348,7 +362,14 @@ class MainWindow(QMainWindow):
             self._checks[name] = check
             self.stem_layout.addWidget(check)
 
+    def _update_separate_button(self) -> None:
+        """Separating needs a single audio file (a stems folder is already split)."""
+        text = self.source.text().strip()
+        path = Path(text) if text else None
+        self.separate_btn.setEnabled(not self._busy and path is not None and path.is_file())
+
     def _refresh_stems(self) -> None:
+        self._update_separate_button()
         text = self.source.text().strip()
         names = stems_of(Path(text)) if text and Path(text).exists() else DEFAULT_STEMS
         self._set_stems(names or DEFAULT_STEMS)
@@ -416,17 +437,33 @@ class MainWindow(QMainWindow):
         form = self._form()
         try:
             song = build_song(form)
-            job = self._make_job(form, song)
+            job = self._make_job(song, lambda: cli_args(form))
         except ConfigError as e:
             QMessageBox.warning(self, "soloslot", str(e))
             return
-        if job is None:
+        if job is not None:
+            self._run(job, song, result=backing_track_path(song))
+
+    def _start_separation(self) -> None:
+        """Only split the song into stems, then load them into the player."""
+        form = self._form()
+        try:
+            song = separation_song(form)
+            job = self._make_job(song, lambda: separate_args(form), separate_only=True)
+        except ConfigError as e:
+            QMessageBox.warning(self, "soloslot", str(e))
             return
+        if job is not None:
+            self._run(job, song, result=None)
+
+    def _run(self, job, song, *, result: Path | None) -> None:
         self.log.clear()
         self.open_output.setVisible(False)
-        self._result = backing_track_path(song)
+        self._result = result
         self._stems_folder = song.folder if song.input is not None else None
         self.start.setEnabled(False)
+        self._busy = True
+        self._update_separate_button()
         self.progress.setRange(0, 0)  # busy indicator
         self._thread = QThread()
         self._worker = Worker(job)
@@ -437,11 +474,13 @@ class MainWindow(QMainWindow):
         self._worker.finished.connect(self._thread.quit)
         self._thread.start()
 
-    def _make_job(self, form: Form, song):
+    def _make_job(self, song, frozen_args, *, separate_only: bool = False):
         """What to run. The installed app splits songs in a private environment with Demucs."""
         if not (_frozen() and song.input is not None):
+            if separate_only:
+                return lambda log: separate_song(song, log=log)
             return lambda log: process_song(song, log=log)
-        args = cli_args(form)
+        args = frozen_args()
         if not bootstrap.is_installed():
             answer = QMessageBox.question(
                 self,
@@ -464,6 +503,8 @@ class MainWindow(QMainWindow):
 
     def _done(self, ok: bool) -> None:
         self.start.setEnabled(True)
+        self._busy = False
+        self._update_separate_button()
         self.progress.setRange(0, 1)
         self.progress.setValue(1 if ok else 0)
         if not ok:
@@ -471,6 +512,10 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "soloslot", "Failed. See Details for the reason.")
         else:
             self.log.appendPlainText("\nDone.")
+            if self._result is None:
+                self.log.appendPlainText(
+                    "The stems are in the player. Set the slots, then press Create backing track."
+                )
             if self._stems_folder is not None and self._stems_folder.is_dir():
                 self._load_preview(self._stems_folder)  # the split stems unlock A/B
             self.open_output.setVisible(self._result is not None)

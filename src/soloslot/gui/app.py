@@ -568,6 +568,30 @@ def _set_windows_app_id() -> None:
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("soloslot.soloslot.gui")
 
 
+def _set_windows_taskbar_icon(window) -> None:
+    """Hand Windows the exe's own icon for the taskbar button.
+
+    Qt converts the window icon only once, and the taskbar can keep a generic icon for the
+    explicit app id. The icon baked into soloslot.exe is exactly the logo, so send it explicitly.
+    """
+    if sys.platform != "win32" or not getattr(sys, "frozen", False):
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    with contextlib.suppress(Exception):
+        large, small = wintypes.HICON(), wintypes.HICON()
+        found = ctypes.windll.shell32.ExtractIconExW(
+            sys.executable, 0, ctypes.byref(large), ctypes.byref(small), 1
+        )
+        if found:
+            hwnd = wintypes.HWND(int(window.winId()))
+            send = ctypes.windll.user32.SendMessageW
+            wm_seticon = 0x0080
+            send(hwnd, wm_seticon, 0, small)  # ICON_SMALL: title bar
+            send(hwnd, wm_seticon, 1, large)  # ICON_BIG: taskbar, Alt+Tab
+
+
 def main() -> None:
     _set_windows_app_id()
     app = QApplication(sys.argv)
@@ -577,6 +601,7 @@ def main() -> None:
     apply_style(app)
     window = MainWindow()
     window.show()
+    _set_windows_taskbar_icon(window)
     window.check_updates()
     sys.exit(app.exec())
 

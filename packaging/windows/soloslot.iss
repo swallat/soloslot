@@ -34,8 +34,8 @@ Source: "..\..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignor
 Source: "..\..\src\soloslot\gui\assets\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\soloslot"; Filename: "{app}\soloslot.exe"
-Name: "{autodesktop}\soloslot"; Filename: "{app}\soloslot.exe"; Tasks: desktopicon
+Name: "{group}\soloslot"; Filename: "{app}\soloslot.exe"; AppUserModelID: "soloslot.soloslot.gui"
+Name: "{autodesktop}\soloslot"; Filename: "{app}\soloslot.exe"; Tasks: desktopicon; AppUserModelID: "soloslot.soloslot.gui"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked

@@ -34,6 +34,9 @@ def test_window_runs_a_job(tmp_path):
     assert w.start.isEnabled()
     assert (tmp_path / "out" / "tune").is_dir()
     assert "Done" in w.log.toPlainText()
+    assert w.open_output.isVisibleTo(w)
+    assert w._result == tmp_path / "out" / "tune" / "tune - Backing Track.wav"
+    assert w._result.exists()
 
 
 def test_update_banner(monkeypatch):

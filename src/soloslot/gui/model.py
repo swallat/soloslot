@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -89,3 +90,20 @@ def cli_args(form: Form) -> list[str]:
     if form.backing_only:
         args.append("--backing-only")
     return args
+
+
+def backing_track_path(song: Song) -> Path:
+    """Where `process_song` writes the backing track."""
+    return song.output / f"{song.name} - Backing Track.{song.format}"
+
+
+def reveal_command(path: Path, platform: str = sys.platform) -> list[str] | None:
+    """File manager command that opens the folder with `path` selected, if the OS has one.
+
+    Linux has no portable way to select a file, so None means: just open the folder.
+    """
+    if platform == "win32":
+        return ["explorer", f"/select,{path}"]
+    if platform == "darwin":
+        return ["open", "-R", str(path)]
+    return None

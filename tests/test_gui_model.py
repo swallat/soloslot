@@ -67,3 +67,14 @@ def test_cli_args(tmp_path):
     assert args[args.index("--mute") + 1] == "guitar,piano"
     assert "--backing-only" in args
     assert args[args.index("--output") + 1] == str((tmp_path / "out" / "song").resolve())
+
+
+def test_reveal_command():
+    from pathlib import Path
+
+    from soloslot.gui.model import reveal_command
+
+    p = Path("out/a - Backing Track.wav")
+    assert reveal_command(p, "win32") == ["explorer", f"/select,{p}"]
+    assert reveal_command(p, "darwin") == ["open", "-R", str(p)]
+    assert reveal_command(p, "linux") is None

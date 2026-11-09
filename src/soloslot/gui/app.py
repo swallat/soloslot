@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 try:
-    from PySide6.QtCore import QObject, Qt, QThread, QUrl, Signal
+    from PySide6.QtCore import QObject, QProcess, Qt, QThread, QUrl, Signal
     from PySide6.QtGui import QAction, QDesktopServices
     from PySide6.QtWidgets import (
         QApplication,
@@ -37,7 +37,15 @@ from soloslot import __version__, bootstrap
 from soloslot.config import OUTPUT_FORMATS, ConfigError
 from soloslot.gui.about import show_about
 from soloslot.gui.branding import app_icon, apply_style, mark_pixmap
-from soloslot.gui.model import DEFAULT_STEMS, Form, build_song, cli_args, stems_of
+from soloslot.gui.model import (
+    DEFAULT_STEMS,
+    Form,
+    backing_track_path,
+    build_song,
+    cli_args,
+    reveal_command,
+    stems_of,
+)
 from soloslot.gui.playerpanel import PlayerPanel
 from soloslot.gui.regions import load_stems, slots_to_text, text_to_slots
 from soloslot.process import process_song
@@ -217,6 +225,12 @@ class MainWindow(QMainWindow):
         self.start.setCursor(Qt.CursorShape.PointingHandCursor)
         self.start.clicked.connect(self._start)
         layout.addWidget(self.start)
+        self.open_output = QPushButton("Open output folder")
+        self.open_output.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.open_output.setVisible(False)
+        self.open_output.clicked.connect(self._open_output)
+        layout.addWidget(self.open_output)
+        self._result: Path | None = None
         self.progress = QProgressBar()
         self.progress.setRange(0, 1)
         self.progress.setTextVisible(False)
@@ -395,6 +409,8 @@ class MainWindow(QMainWindow):
         if job is None:
             return
         self.log.clear()
+        self.open_output.setVisible(False)
+        self._result = backing_track_path(song)
         self.start.setEnabled(False)
         self.progress.setRange(0, 0)  # busy indicator
         self._thread = QThread()
@@ -440,6 +456,17 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "soloslot", "Failed. See Details for the reason.")
         else:
             self.log.appendPlainText("\nDone.")
+            self.open_output.setVisible(self._result is not None)
+
+    def _open_output(self) -> None:
+        """Show the result in the file manager, with the backing track selected where possible."""
+        if self._result is None:
+            return
+        folder = self._result.parent
+        cmd = reveal_command(self._result) if self._result.exists() else None
+        if cmd and QProcess.startDetached(cmd[0], cmd[1:]):
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
 
     def closeEvent(self, event) -> None:
         self.panel.player.stop()

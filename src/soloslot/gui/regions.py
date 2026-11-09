@@ -152,3 +152,16 @@ def render(
 def matches_any(labels: list[str], muted: tuple[str, ...]) -> bool:
     """Whether any stem would be muted by the `muted` names."""
     return any(matches(label, muted) for label in labels)
+
+
+SKIP = 5.0  # seconds moved by rewind and forward
+
+
+def previous_marker(slots: list[Solo], position: float, margin: float = 0.5) -> float:
+    """Where 'previous' goes: the closest slot start before `position`, or the song start."""
+    return max((s.start for s in slots if s.start < position - margin), default=0.0)
+
+
+def next_marker(slots: list[Solo], position: float, duration: float, margin: float = 0.05) -> float:
+    """Where 'next' goes: the closest slot start after `position`, or the song end."""
+    return min((s.start for s in slots if s.start > position + margin), default=duration)

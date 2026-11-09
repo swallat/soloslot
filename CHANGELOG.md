@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Player: the usual transport buttons (previous, back 5 s, play/pause, stop, forward 5 s, next).
+  Previous and next jump between the slot starts.
+
 ## [0.4.3] - 2026-11-09
 
 ### Fixed

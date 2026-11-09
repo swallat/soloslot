@@ -105,6 +105,17 @@ QPushButton#primary:disabled {{
     color: palette(mid);
     border-color: palette(mid);
 }}
+QPushButton#transport, QPushButton#transportMain {{ padding: 6px 0; }}
+QPushButton#transportMain {{
+    background: {AMBER};
+    border: 1px solid {AMBER_PRESSED};
+}}
+QPushButton#transportMain:hover {{ background: {AMBER_HOVER}; }}
+QPushButton#transportMain:pressed {{ background: {AMBER_PRESSED}; }}
+QPushButton#transportMain:disabled {{
+    background: palette(midlight);
+    border-color: palette(mid);
+}}
 QProgressBar {{ border: none; border-radius: 3px; background: palette(midlight); max-height: 6px; }}
 QProgressBar::chunk {{ background: {AMBER}; border-radius: 3px; }}
 QCheckBox {{ spacing: 8px; padding: 4px 6px; }}

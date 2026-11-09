@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-09
+
+### Fixed
+- Windows installer: upgrading left the old bundle files in place, including the old
+  `soloslot-<version>.dist-info`. The window then still showed the previous version (and kept
+  offering the update) although the new code ran. The installer now clears `_internal` first.
+
 ## [0.4.1] - 2026-11-09
 
 ### Fixed

@@ -21,6 +21,11 @@ OutputDir=..\..\installers
 OutputBaseFilename=soloslot-{#AppVersion}-windows-setup
 UninstallDisplayName=soloslot
 
+[InstallDelete]
+; Remove the previous bundle first. Otherwise soloslot-<old>.dist-info stays next to the new one
+; and importlib.metadata keeps reporting the old version (the upgraded app still said 0.4.0).
+Type: filesandordirs; Name: "{app}\_internal"
+
 [Files]
 Source: "..\..\dist\soloslot\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 Source: "..\..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion

@@ -164,13 +164,24 @@ def uv_env(environ: dict[str, str] | None = None, root: Path | None = None) -> d
     """
     base = root or data_dir()
     env = child_env(environ)
-    for var in ("UV_PYTHON", "VIRTUAL_ENV", "CONDA_PREFIX", "UV_PROJECT_ENVIRONMENT"):
+    # Drop user settings that select/steer Python. Of the managed/preference/no-managed
+    # options only one may be set: uv rejects e.g. UV_MANAGED_PYTHON together with
+    # UV_PYTHON_PREFERENCE ("cannot be used with --python-preference").
+    for var in (
+        "UV_PYTHON",
+        "VIRTUAL_ENV",
+        "CONDA_PREFIX",
+        "UV_PROJECT_ENVIRONMENT",
+        "UV_PYTHON_PREFERENCE",
+        "UV_NO_MANAGED_PYTHON",
+        "UV_SYSTEM_PYTHON",
+    ):
         env.pop(var, None)
     env.update(
         UV_PYTHON_INSTALL_DIR=str(base / "python"),
         UV_CACHE_DIR=str(base / "uv-cache"),
-        UV_PYTHON_PREFERENCE="only-managed",
-        UV_MANAGED_PYTHON="1",
+        UV_MANAGED_PYTHON="1",  # only uv's own Python; never scoop/pyenv/system ones
+        UV_PYTHON_DOWNLOADS="automatic",
         UV_NO_CONFIG="1",
     )
     return env

@@ -15,6 +15,8 @@ from soloslot.bootstrap import (
     ensure_uv,
     env_python,
     install_separation,
+    is_link_error,
+    python_dir_candidates,
     run_separation,
     stream,
     uv_asset,
@@ -160,3 +162,45 @@ def test_python_version():
     assert bootstrap.python_version("linux", "x86_64") == "3.13"
     assert bootstrap.python_version("darwin", "arm64") == "3.13"
     assert bootstrap.python_version("darwin", "x86_64") == "3.12"
+
+
+def test_is_link_error():
+    assert is_link_error(
+        "error: Failed to create Python minor version link directory (os error 448)"
+    )
+    assert is_link_error("... nicht vertrauenswürdigen Bereitstellungspunkt ... os error 448")
+    assert not is_link_error("error: something else")
+
+
+def test_python_dir_candidates(tmp_path):
+    real = tmp_path / "real"
+    real.mkdir()
+    link = tmp_path / "link"
+    try:
+        link.symlink_to(real, target_is_directory=True)
+    except OSError:
+        pytest.skip("symlinks unavailable")
+    found = python_dir_candidates(link, "linux")
+    assert found == [link / "python", real / "python"]
+    win = python_dir_candidates(real, "win32", {"PUBLIC": "C:/Users/P"})
+    assert win[-1] == Path("C:/Users/P/soloslot/python")
+
+
+def test_install_separation_retries_after_link_error(tmp_path, monkeypatch):
+    monkeypatch.setattr(bootstrap, "ensure_uv", lambda folder, **kw: Path("uv"))
+    monkeypatch.setattr(
+        bootstrap, "python_dir_candidates", lambda root: [tmp_path / "a", tmp_path / "b"]
+    )
+    dirs = []
+
+    def run(cmd, log, env=None):
+        dirs.append(env["UV_PYTHON_INSTALL_DIR"])
+        if len(dirs) == 1:
+            log("error: Failed to create Python minor version link directory (os error 448)")
+            return 2
+        return 0
+
+    root = tmp_path / "env"
+    install_separation("1.2.3", root=root, log=lambda _: None, run=run)
+    assert dirs[:2] == [str(tmp_path / "a"), str(tmp_path / "b")]
+    assert (root / ".installed").exists()

@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- App setup on Windows failed with `os error 448` (untrusted mount point) while uv linked its
+  Python: the setup now uses the resolved real path and retries in `C:\Users\Public\soloslot`.
+
 ## [0.4.1] - 2026-11-09
 
 ### Fixed

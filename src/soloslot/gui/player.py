@@ -61,6 +61,12 @@ class SoundDeviceOutput:
         with self._lock:
             return int(self._consumed * 1e6 / self._rate)
 
+    def flush(self) -> int:
+        """Drop audio that was queued but not played yet; returns `processed_us` at that moment."""
+        with self._lock:
+            self._fifo.clear()
+            return int(self._consumed * 1e6 / self._rate)
+
 
 class Player(QObject):
     """Plays a float32 (frames, channels) buffer; seek, pause and play a span.
@@ -78,7 +84,8 @@ class Player(QObject):
         self._rate = 44100
         self._out = None
         self._base = 0  # frame where the current output started
-        self._sent = 0  # frames written to the output since it started
+        self._sent = 0  # frames written to the output since `_base`
+        self._proc0 = 0  # frames the output had already played at `_base`
         self._stop_at: int | None = None
         self._pos = 0  # frame position while not playing
         self.playing = False
@@ -94,8 +101,8 @@ class Player(QObject):
 
     def position(self) -> float:
         if self.playing and self._out is not None:
-            played = int(self._out.processed_us() * self._rate / 1e6)
-            return (self._base + min(played, self._sent)) / self._rate
+            played = int(self._out.processed_us() * self._rate / 1e6) - self._proc0
+            return (self._base + min(max(played, 0), self._sent)) / self._rate
         return self._pos / self._rate
 
     def set_audio(self, audio: np.ndarray, sample_rate: int) -> None:
@@ -106,6 +113,23 @@ class Player(QObject):
         self._pos = min(int(pos * sample_rate), len(audio))
         if was_playing:
             self.play(pos, None if stop_at is None else stop_at / sample_rate)
+
+    def swap_audio(self, audio: np.ndarray) -> None:
+        """Switch to other audio of the same length and rate without stopping the output.
+
+        Used for A/B: playback continues at the same position; only what was already queued
+        (a fraction of a second) is replaced, so there is no gap and no restart.
+        """
+        if self._audio is None or len(audio) != len(self._audio):
+            raise ValueError("swap_audio needs audio of the same length")
+        if not self.playing or self._out is None:
+            self._audio = audio
+            return
+        processed = int(self._out.flush() * self._rate / 1e6)  # frames played so far
+        pos = self._base + min(max(processed - self._proc0, 0), self._sent)
+        self._audio = audio
+        self._base, self._sent, self._proc0 = pos, 0, processed
+        self._tick()
 
     # -- control
     def play(self, start: float | None = None, stop: float | None = None) -> None:
@@ -125,7 +149,7 @@ class Player(QObject):
             self._out = None
             return
         self.error = ""
-        self._base, self._sent = self._pos, 0
+        self._base, self._sent, self._proc0 = self._pos, 0, 0
         self._stop_at = None if stop is None else min(int(stop * self._rate), len(self._audio))
         self.playing = True
         self._timer.start()

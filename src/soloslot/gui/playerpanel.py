@@ -35,6 +35,8 @@ class PlayerPanel(QWidget):
         self.player = player or Player()
         self.stems: rg.Stems | None = None
         self.muted: tuple[str, ...] = ()
+        self._original = None  # both versions stay in memory, so A/B needs no rendering
+        self._gapped = None
         self.fade_ms = DEFAULT_FADE_MS
 
         self.wave = WaveformView()
@@ -49,13 +51,18 @@ class PlayerPanel(QWidget):
         self.slot_btn.setToolTip(
             f"Play the selected slot (or the first) with {rg.PREVIEW_PAD:g} s before and after"
         )
-        self.original = QRadioButton("Original")
-        self.gaps = QRadioButton("With gaps")
+        self.original = QRadioButton("A  Original")
+        self.gaps = QRadioButton("B  With gaps")
         self.gaps.setChecked(True)
         self.gaps.setToolTip("The backing track as it will be written: muted stems are silent")
         group = QButtonGroup(self)
         group.addButton(self.original)
         group.addButton(self.gaps)
+        self.ab_btn = QPushButton("A/B")
+        self.ab_btn.setToolTip(
+            "Switch between the original and the result (B), at the same position"
+        )
+        self.ab_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.show_stems = QCheckBox("Show stems")
         self.show_stems.setToolTip("One waveform per stem below the mix")
         self.show_stems.toggled.connect(self.wave.set_show_lanes)
@@ -87,7 +94,7 @@ class PlayerPanel(QWidget):
         for w in (zoom_out, zoom_in, fit):
             row.addWidget(w)
         options = QHBoxLayout()
-        for w in (self.original, self.gaps, self.show_stems):
+        for w in (self.ab_btn, self.original, self.gaps, self.show_stems):
             options.addWidget(w)
         options.addStretch(1)
         layout = QVBoxLayout(self)
@@ -110,7 +117,8 @@ class PlayerPanel(QWidget):
         self.fwd_btn.clicked.connect(lambda: self.skip(rg.SKIP))
         self.next_btn.clicked.connect(self.next)
         self.slot_btn.clicked.connect(self.preview_slot)
-        self.original.toggled.connect(self._schedule)
+        self.original.toggled.connect(self._mode_changed)
+        self.ab_btn.clicked.connect(self.toggle_ab)
         zoom_out.clicked.connect(lambda: self.wave.zoom(0.8))
         zoom_in.clicked.connect(lambda: self.wave.zoom(1.25))
         fit.clicked.connect(self.wave.fit)
@@ -120,6 +128,7 @@ class PlayerPanel(QWidget):
         self.player.positionChanged.connect(self._position)
         self.player.stateChanged.connect(self._state)
         QShortcut(QKeySequence(Qt.Key.Key_Space), self, activated=self.toggle_play)
+        QShortcut(QKeySequence(Qt.Key.Key_B), self, activated=self.toggle_ab)
         self._update_buttons()
 
     # -- data from the window
@@ -150,6 +159,7 @@ class PlayerPanel(QWidget):
             else []
         )
         self.show_stems.setEnabled(stems.can_mute)
+        self._original, self._gapped = original, None
         self.player.set_audio(original, stems.sample_rate)
         self._rebuild()
         self._update_buttons()
@@ -233,17 +243,44 @@ class PlayerPanel(QWidget):
         self._timer.start()
 
     def _rebuild(self) -> None:
+        """Render the version with gaps (after slots or muted stems changed), then apply."""
         if self.stems is None:
             return
-        want_gaps = self.gaps.isChecked() and self.stems.can_mute
-        audio = rg.render(self.stems, self.muted, self.wave.slots, self.fade_ms, want_gaps)
-        self.player.set_audio(audio, self.stems.sample_rate)
+        self._gapped = None
+        if self.stems.can_mute:
+            self._gapped = rg.render(self.stems, self.muted, self.wave.slots, self.fade_ms, True)
+        self._apply()
+
+    def _apply(self) -> None:
+        """Play the chosen version from the current position, without restarting the output."""
+        if self.stems is None or self._original is None:
+            return
+        audio = (
+            self._gapped if self.gaps.isChecked() and self._gapped is not None else self._original
+        )
+        try:
+            self.player.swap_audio(audio)
+        except ValueError:  # different length: restart the output
+            self.player.set_audio(audio, self.stems.sample_rate)
         if self.gaps.isChecked() and not self.stems.can_mute:
             self.hint.setText("A single file cannot be muted. Choose a stems folder to hear gaps.")
         elif self.gaps.isChecked() and not rg.matches_any(self.stems.labels, self.muted):
             self.hint.setText("Select the stems to mute below to hear the gaps.")
         else:
             self.hint.setText("")
+
+    def _mode_changed(self) -> None:
+        if self._timer.isActive():  # edits are pending: render them now, the user wants to hear
+            self._timer.stop()
+            self._rebuild()
+        else:
+            self._apply()
+
+    def toggle_ab(self) -> None:
+        """Switch between A (original) and B (result with gaps) at the same position."""
+        if self.stems is None or not self.stems.can_mute:
+            return
+        (self.original if self.gaps.isChecked() else self.gaps).setChecked(True)
 
     def _position(self, seconds: float) -> None:
         total = self.stems.duration if self.stems else 0.0
@@ -262,5 +299,6 @@ class PlayerPanel(QWidget):
         self.next_btn.setEnabled(ready)
         self.slot_btn.setEnabled(ready and bool(self.wave.slots))
         self.gaps.setEnabled(ready and self.stems.can_mute)
+        self.ab_btn.setEnabled(ready and self.stems.can_mute)
         if ready and not self.stems.can_mute:
             self.original.setChecked(True)

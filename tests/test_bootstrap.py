@@ -106,6 +106,25 @@ def test_install_separation_runs_steps(tmp_path, monkeypatch):
     assert envs[0]["UV_PYTHON_INSTALL_DIR"] == str(tmp_path / "python")
 
 
+def test_install_separation_upgrades_only_soloslot_after_an_app_update(tmp_path, monkeypatch):
+    monkeypatch.setattr(bootstrap, "ensure_uv", lambda folder, **kw: Path("uv"))
+    root = tmp_path / "env"
+    (root / ("Scripts" if sys.platform.startswith("win") else "bin")).mkdir(parents=True)
+    bootstrap.env_python(root).write_text("")
+    (root / ".installed").write_text("1.2.2", encoding="utf-8")
+    calls = []
+
+    def run(cmd, log, env=None):
+        calls.append([str(c) for c in cmd])
+        return 0
+
+    install_separation("1.2.3", root=root, log=lambda _: None, run=run)
+    assert len(calls) == 1 and "soloslot[separate]==1.2.3" in calls[0]  # no new venv, no torch
+    assert (root / ".installed").read_text() == "1.2.3"
+    install_separation("1.2.3", root=root, log=lambda _: None, run=run)  # same version: nothing
+    assert len(calls) == 1
+
+
 def test_install_separation_reports_failure(tmp_path, monkeypatch):
     monkeypatch.setattr(bootstrap, "ensure_uv", lambda folder, **kw: Path("uv"))
     with pytest.raises(SetupError, match="failed"):

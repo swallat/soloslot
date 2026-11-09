@@ -64,6 +64,14 @@ def is_installed(root: Path | None = None) -> bool:
     return (root / ".installed").is_file() and env_python(root).is_file()
 
 
+def installed_version(root: Path | None = None) -> str:
+    """The soloslot version the separation environment was set up with ('' if unknown)."""
+    try:
+        return ((root or env_dir()) / ".installed").read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
 def uv_asset(platform: str | None = None, machine: str | None = None) -> tuple[str, str]:
     """(file name, executable name) of the uv release archive for this machine."""
     platform = platform or sys.platform
@@ -269,7 +277,9 @@ def install_separation(
     """Create the environment and install soloslot[separate]. Returns its python."""
     root = root or env_dir()
     if is_installed(root):
-        return env_python(root)
+        if installed_version(root) == version:
+            return env_python(root)
+        return _upgrade_soloslot(version, root, log, run, fetch)
     with tempfile.TemporaryDirectory() as tmp:
         uv = ensure_uv(Path(tmp), fetch=fetch, log=log)
         python = env_python(root)
@@ -308,6 +318,27 @@ def install_separation(
     root.mkdir(parents=True, exist_ok=True)
     (root / ".installed").write_text(version, encoding="utf-8")
     log("Stem separation is ready.")
+    return python
+
+
+def _upgrade_soloslot(
+    version: str, root: Path, log: Log, run: Callable[..., int], fetch: Fetch
+) -> Path:
+    """The app was updated: bring soloslot in the existing environment to the same version.
+
+    Only soloslot is reinstalled; PyTorch and Demucs stay, so this is quick. Without it the
+    environment would run an old command line that does not know new options.
+    """
+    python = env_python(root)
+    with tempfile.TemporaryDirectory() as tmp:
+        uv = ensure_uv(Path(tmp), fetch=fetch, log=log)
+        message = f"Updating soloslot in the separation environment to {version} ..."
+        log(message)
+        isolated = uv_env(root=root.parent, python_dir=root.parent / "python")
+        cmd = [uv, "pip", "install", "--python", python, f"soloslot[separate]=={version}"]
+        if run(cmd, log, env=isolated) != 0:
+            raise SetupError(f"setup failed in step: {message} See Details for the output.")
+    (root / ".installed").write_text(version, encoding="utf-8")
     return python
 
 

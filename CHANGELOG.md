@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Installed app: after an app update the private stem separation environment kept running the
+  old soloslot, so new options (such as Separate stems only) failed with "No such option". The
+  app now updates soloslot in that environment to its own version before it separates (quick:
+  PyTorch and Demucs stay).
+
 ## [0.4.6] - 2026-11-09
 
 ### Added

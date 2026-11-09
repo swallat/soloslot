@@ -6,7 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-11-09
+
 ### Fixed
+- GUI: the Open output folder button opened the wrong folder on Windows because the explorer
+  `/select` argument was not quoted.
 - Player: after a single song was split, the player kept showing the song and A/B stayed off. It
   now loads the split stems when the run finishes, and also when a song that was split before is
   chosen again (same file and model), so A/B and the stem view work right away.
@@ -131,7 +135,8 @@ command and module).
 - `--song` to pick a song and `--dry-run` to preview.
 - Refuses an output folder that equals the stems folder, so originals are never overwritten.
 
-[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/swallat/soloslot/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/swallat/soloslot/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/swallat/soloslot/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/swallat/soloslot/compare/v0.4.1...v0.4.3
 [0.4.1]: https://github.com/swallat/soloslot/compare/v0.4.0...v0.4.1

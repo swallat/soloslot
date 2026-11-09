@@ -1,6 +1,6 @@
 [project]
 name = "soloslot"
-version = "0.4.4"
+version = "0.4.5"
 description = "Mute instruments in the solo of a song to build play-along backing tracks"
 readme = "README.md"
 requires-python = ">=3.12"

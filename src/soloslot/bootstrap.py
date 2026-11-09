@@ -156,7 +156,38 @@ def child_env(environ: dict[str, str] | None = None) -> dict[str, str]:
     return env
 
 
-def uv_env(environ: dict[str, str] | None = None, root: Path | None = None) -> dict[str, str]:
+def python_dir_candidates(
+    root: Path, platform: str | None = None, environ: dict[str, str] | None = None
+) -> list[Path]:
+    """Folders where uv may install its Python, most preferred first.
+
+    uv links `cpython-3.13-...` to the real install with a junction/symlink. Windows refuses
+    that below an untrusted reparse point (os error 448: OneDrive/redirected AppData, ...), so
+    the resolved real path comes first, then a plain folder in the public profile.
+    """
+    env = os.environ if environ is None else environ
+    found = [root / "python", Path(os.path.realpath(root)) / "python"]
+    if (platform or sys.platform).startswith("win"):
+        public = env.get("PUBLIC") or "C:/Users/Public"
+        found.append(Path(public) / "soloslot" / "python")
+    unique: list[Path] = []
+    for candidate in found:
+        if candidate not in unique:
+            unique.append(candidate)
+    return unique
+
+
+def is_link_error(output: str) -> bool:
+    """True if uv's output shows Windows refusing to create the Python link (os error 448)."""
+    text = output.lower()
+    return "os error 448" in text or "untrusted mount point" in text
+
+
+def uv_env(
+    environ: dict[str, str] | None = None,
+    root: Path | None = None,
+    python_dir: Path | None = None,
+) -> dict[str, str]:
     """child_env() plus settings that isolate uv from the user's own Python/uv setup.
 
     uv would otherwise find e.g. a scoop/pyenv/system Python (which may be unusable, like a
@@ -178,7 +209,7 @@ def uv_env(environ: dict[str, str] | None = None, root: Path | None = None) -> d
     ):
         env.pop(var, None)
     env.update(
-        UV_PYTHON_INSTALL_DIR=str(base / "python"),
+        UV_PYTHON_INSTALL_DIR=str(python_dir or base / "python"),
         UV_CACHE_DIR=str(base / "uv-cache"),
         UV_MANAGED_PYTHON="1",  # only uv's own Python; never scoop/pyenv/system ones
         UV_PYTHON_DOWNLOADS="automatic",
@@ -251,15 +282,44 @@ def install_separation(
             )
         )
         root.parent.mkdir(parents=True, exist_ok=True)
-        isolated = uv_env(root=root.parent)
-        for message, cmd in steps:
+        candidates = python_dir_candidates(root.parent)
+        isolated = uv_env(root=root.parent, python_dir=candidates[0])
+        for index, (message, cmd) in enumerate(steps):
             log(message)
-            if run(cmd, log, env=isolated) != 0:
+            if index == 0:  # creating the venv installs Python, which can hit os error 448
+                code = _run_venv_step(cmd, log, run, candidates, root.parent)
+            else:
+                code = run(cmd, log, env=isolated)
+            if code != 0:
                 raise SetupError(f"setup failed in step: {message} See Details for the output.")
     root.mkdir(parents=True, exist_ok=True)
     (root / ".installed").write_text(version, encoding="utf-8")
     log("Stem separation is ready.")
     return python
+
+
+def _run_venv_step(
+    cmd: Sequence[str | Path],
+    log: Log,
+    run: Callable[..., int],
+    candidates: list[Path],
+    base: Path,
+) -> int:
+    """Run the venv step, retrying in the next Python folder when Windows refuses the link."""
+    code = 1
+    for python_dir in candidates:
+        seen: list[str] = []
+
+        def tee(line: str, _seen: list[str] = seen) -> None:
+            _seen.append(line)
+            log(line)
+
+        python_dir.mkdir(parents=True, exist_ok=True)
+        code = run(cmd, tee, env=uv_env(root=base, python_dir=python_dir))
+        if code == 0 or not is_link_error("\n".join(seen)):
+            return code
+        log(f"Could not link Python in {python_dir}; trying another folder ...")
+    return code
 
 
 def run_separation(

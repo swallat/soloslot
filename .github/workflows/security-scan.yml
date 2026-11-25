@@ -1,0 +1,48 @@
+name: Security scan
+
+# Weekly vulnerability scan of the locked dependencies. Opens (or updates) an issue when
+# pip-audit finds something. Not a required check.
+on:
+  schedule:
+    - cron: "17 2 * * 0"  # Sunday night, UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  pip-audit:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.5"
+      - name: Export locked requirements
+        run: uv export --locked --all-extras --no-emit-project --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
+      - name: Audit
+        id: audit
+        continue-on-error: true
+        run: uvx pip-audit --requirement "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip --progress-spinner off > "$RUNNER_TEMP/audit.txt" 2>&1
+      - name: Open or update issue on findings
+        if: steps.audit.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Security scan: vulnerable dependencies found"
+          {
+            echo "The weekly \`pip-audit\` run reported vulnerable dependencies in \`uv.lock\`."
+            echo
+            echo "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo '```'
+            tail -c 50000 "$RUNNER_TEMP/audit.txt"
+            echo '```'
+          } > "$RUNNER_TEMP/body.md"
+          number="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --label security --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --label security --body-file "$RUNNER_TEMP/body.md"
+          fi

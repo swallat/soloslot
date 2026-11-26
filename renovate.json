@@ -1,85 +1,96 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "description": "Maintenance policy: docs/maintenance.md. Later package rules win over earlier ones.",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    "helpers:pinGitHubActionDigests",
+    "customManagers:githubActionsVersions"
+  ],
   "timezone": "Europe/Berlin",
-  "schedule": ["* 1-5 * * 1-5"],
+  "schedule": ["* 0-5 * * 1-5"],
   "prConcurrentLimit": 5,
   "prHourlyLimit": 2,
   "minimumReleaseAge": "3 days",
-  "platformAutomerge": true,
+  "labels": ["dependencies"],
+  "platformAutomerge": false,
   "automergeType": "pr",
   "rebaseWhen": "behind-base-branch",
-  "labels": ["dependencies"],
+  "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "enabled": true,
     "schedule": ["at any time"],
     "minimumReleaseAge": null,
-    "labels": ["dependencies", "security"],
-    "automerge": true
+    "addLabels": ["security"]
   },
   "lockFileMaintenance": {
+    "description": "Deviation from the standard: not merged on its own, the tests do not cover audio and GUI behaviour.",
     "enabled": true,
-    "schedule": ["* 1-5 1 * *"],
+    "schedule": ["* 0-5 * * 1"],
     "automerge": false,
-    "labels": ["dependencies", "needs-review"]
+    "minimumReleaseAge": null,
+    "addLabels": ["needs-review"]
   },
   "packageRules": [
     {
-      "description": "Automerge non-major updates once all required checks are green",
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "description": "Merge non-major updates once every check on the PR is green.",
+      "matchUpdateTypes": ["patch", "minor", "pin", "pinDigest", "digest"],
       "automerge": true
     },
     {
-      "description": "Group GitHub Actions updates",
+      "description": "Group GitHub Actions updates.",
       "matchManagers": ["github-actions"],
-      "groupName": "github actions",
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"]
+      "matchUpdateTypes": ["patch", "minor", "pin", "pinDigest", "digest"],
+      "groupName": "github actions"
     },
     {
-      "description": "Group Python dependencies (non-major)",
+      "description": "Group Python dependencies (non-major).",
       "matchManagers": ["pep621"],
       "matchDepTypes": ["dependencies", "project.optional-dependencies"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchUpdateTypes": ["patch", "minor"],
       "groupName": "python dependencies"
     },
     {
-      "description": "Group dev tools (non-major)",
+      "description": "Group dev tools (non-major).",
       "matchDepTypes": ["dependency-groups"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchUpdateTypes": ["patch", "minor"],
       "groupName": "dev tools"
     },
     {
-      "description": "Core libraries: audio I/O, stem separation, GUI and packaging. Tests do not cover every behaviour, so a human or the weekly maintenance run reviews them.",
+      "description": "0.x versions: a minor step may break the API, treat it like a major.",
+      "matchCurrentVersion": "/^(==|~=|>=|\\^|~|v)?0\\./",
+      "matchUpdateTypes": ["minor"],
+      "groupName": null,
+      "automerge": false,
+      "addLabels": ["needs-review"]
+    },
+    {
+      "description": "Core libraries: audio I/O, stem separation, GUI and packaging. The tests do not cover every behaviour.",
       "matchPackageNames": ["numpy", "soundfile", "demucs", "torch", "torchaudio", "PySide6", "PySide6-Essentials", "sounddevice", "pyinstaller"],
       "groupName": "core libraries",
       "automerge": false,
-      "labels": ["dependencies", "needs-review"]
+      "addLabels": ["needs-review"]
     },
     {
-      "description": "Language and tool versions: never automerge",
+      "description": "Python and uv versions: never merged on their own.",
       "matchDepNames": ["python", "astral-sh/uv", "uv"],
       "groupName": "python and uv versions",
       "automerge": false,
-      "labels": ["dependencies", "needs-review"]
+      "addLabels": ["needs-review"]
     },
     {
-      "description": "Actions that publish releases or handle secrets: never automerge",
-      "matchPackageNames": ["pypa/gh-action-pypi-publish"],
+      "description": "Actions that publish releases or handle artifacts: never merged on their own.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["pypa/gh-action-pypi-publish", "actions/upload-artifact", "actions/download-artifact"],
+      "groupName": "release chain actions",
       "automerge": false,
-      "labels": ["dependencies", "needs-review"]
+      "addLabels": ["needs-review"]
     },
     {
-      "description": "0.x versions treat minor bumps like majors",
-      "matchCurrentVersion": "/^0\\./",
-      "matchUpdateTypes": ["minor"],
-      "automerge": false,
-      "labels": ["dependencies", "needs-review"]
-    },
-    {
-      "description": "Major updates: never automerge",
+      "description": "Major updates are only prepared, never merged on their own.",
       "matchUpdateTypes": ["major"],
       "automerge": false,
-      "labels": ["dependencies", "major", "needs-review"]
+      "addLabels": ["needs-review", "major"]
     }
   ]
 }

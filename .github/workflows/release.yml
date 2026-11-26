@@ -1,7 +1,7 @@
 name: Release
 
 # Publishes to PyPI when a version tag (v0.1.0, ...) is pushed, or when this workflow is started
-# by hand (or by the weekly maintenance task) on main with the version to release. The run then
+# by hand (or by the maintenance task) on main with the version to release. The run then
 # creates the tag itself. Uses PyPI Trusted Publishing (OIDC), so no API token is stored in GitHub.
 on:
   push:

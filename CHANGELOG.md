@@ -8,7 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 - Dependency maintenance moves from Dependabot to Renovate, with a weekly vulnerability scan
-  and a release check (see `docs/maintenance.md`).
+  and security releases by the weekly maintenance task (see `docs/maintenance.md`).
 
 ## [0.4.7] - 2026-11-09
 

@@ -25,7 +25,6 @@ from soloslot.update import Fetch, UpdateError, expected_checksum, fetch_bytes
 
 UV_VERSION = "0.13.5"  # keep in step with mise.toml / CI
 PYTHON_VERSION = "3.13"  # newest with wheels for torch, lameenc and sphn on all supported systems
-INTEL_MAC_PYTHON_VERSION = "3.12"  # demucs needs torch<2.3 on Intel Macs; no wheels beyond 3.12
 TORCH_CPU_INDEX = "https://download.pytorch.org/whl/cpu"
 
 Log = Callable[[str], None]
@@ -96,7 +95,8 @@ def python_version(platform: str | None = None, machine: str | None = None) -> s
     platform = platform or sys.platform
     machine = (machine or _machine()).lower()
     if platform == "darwin" and machine not in ("arm64", "aarch64"):
-        return INTEL_MAC_PYTHON_VERSION
+        # PyTorch 2.3+ has no macOS x86_64 wheels, and 2.2.2 has known vulnerabilities.
+        raise SetupError("stem separation is not supported on Intel Macs")
     return PYTHON_VERSION
 
 

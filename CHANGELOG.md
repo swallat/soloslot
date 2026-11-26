@@ -7,6 +7,10 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- Intel Macs are no longer supported for stem separation. PyTorch 2.3 and later ship no macOS
+  x86_64 wheels, and the last one that did (2.2.2) has known vulnerabilities. The locked
+  PyTorch is now 2.15.0. Apple silicon, Windows and Linux are unaffected; on an Intel Mac the
+  separation setup now stops with a clear message.
 - Dependency maintenance moves from Dependabot to Renovate, with a weekly vulnerability scan
   and security releases by the weekly maintenance task (see `docs/maintenance.md`).
 

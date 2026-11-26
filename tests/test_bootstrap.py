@@ -181,7 +181,8 @@ def test_python_version():
     assert bootstrap.python_version("win32", "AMD64") == "3.13"
     assert bootstrap.python_version("linux", "x86_64") == "3.13"
     assert bootstrap.python_version("darwin", "arm64") == "3.13"
-    assert bootstrap.python_version("darwin", "x86_64") == "3.12"
+    with pytest.raises(SetupError, match="Intel Macs"):
+        bootstrap.python_version("darwin", "x86_64")
 
 
 def test_is_link_error():

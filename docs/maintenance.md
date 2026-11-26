@@ -29,24 +29,29 @@ Configuration: [`renovate.json`](../renovate.json).
 `uv.lock` every Sunday night. One open issue labelled `vulnerability` lists the findings; a
 clean run closes it. It is not a required check.
 
-## Weekly Claude task
+## Daily Claude task
 
-Every Monday morning a scheduled Claude task in the cloud (`Softwarepflege soloslot`):
+On weekdays around 06:00 (Europe/Berlin) a scheduled Claude task in the cloud runs
+(`Softwarepflege soloslot`). It works in two stages so that a quiet day costs almost nothing:
 
-1. Looks at open PRs by `renovate[bot]`, at open issues labelled `vulnerability` or
-   `security-release`, and at security fixes that are merged but not released. If there is
-   nothing, it ends at once.
-2. Repairs red checks on those PRs.
-3. Merges non-major updates after an independent review and green CI.
-4. Prepares major updates, but does not merge them, and lists them in its report.
-5. Decides on a security release, see below.
+1. **Triage (small, inexpensive model).** It looks at open PRs by `renovate[bot]`, at red
+   checks on them, at open issues labelled `vulnerability` or `security-release`, and at
+   security fixes that are merged but not yet released. If there is nothing, it ends at once
+   with "Nothing to do" and makes no further calls.
+2. **Work (stronger model).** If there is work, the triage hands it to a stronger model, which:
+   - repairs red checks on those PRs and prepares the changes;
+   - hands every non-major update to an independent review by a separate reviewer
+     (a different, strong model) before it is merged; it merges only after that review and
+     green CI;
+   - prepares major updates, but never merges them, and lists them in its report;
+   - decides on a security release, see below.
 
 It touches no other PRs, never force-pushes and changes no settings. CI can be started by hand
 with the `workflow_dispatch` trigger of `ci.yml`.
 
 ## Security releases
 
-When pull requests labelled `security` were merged after the latest release, the weekly task
+When pull requests labelled `security` were merged after the latest release, the daily task
 decides whether to publish them:
 
 - It releases only when the fixed dependency is part of the published package or the

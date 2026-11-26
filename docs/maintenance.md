@@ -57,9 +57,11 @@ decides whether to publish them:
   the new version, and merges it after an independent review and green CI. If
   `pyproject.toml` already holds a version that has no tag yet, that version is released and
   not raised again.
-- It then creates the tag `vX.Y.Z` on that merge commit. The tag starts
-  [`release.yml`](../.github/workflows/release.yml), which publishes to PyPI, builds the
-  installers and writes the GitHub release.
+- It then starts [`release.yml`](../.github/workflows/release.yml) with `workflow_dispatch` on
+  `main`, passing the version (for example `0.4.7`). The run checks that the input matches
+  `pyproject.toml`, creates the tag `vX.Y.Z` on that commit if it is missing, publishes to
+  PyPI, builds the installers and writes the GitHub release. Pushing a `v*` tag by hand still
+  works the same way.
 - It checks afterwards that the release is published.
 - In any other case, or when in doubt, it publishes nothing and opens an issue
   `Security release needs a decision` (label `security-release`).
@@ -70,5 +72,3 @@ At most one security release per run. Every other release stays a decision of th
 
 - Lock file maintenance is not merged on its own: the tests do not cover audio and GUI
   behaviour, so a refresh of every transitive dependency gets a review.
-- The security release is started by a tag that the weekly task creates, not by a
-  `workflow_dispatch` run: `release.yml` only reacts to a pushed tag and stays as it is.

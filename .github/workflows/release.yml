@@ -1,13 +1,62 @@
 name: Release
 
-# Publishes to PyPI when a version tag (v0.1.0, ...) is pushed. Uses PyPI Trusted Publishing
-# (OIDC), so no API token is stored in GitHub.
+# Publishes to PyPI when a version tag (v0.1.0, ...) is pushed, or when this workflow is started
+# by hand (or by the weekly maintenance task) on main with the version to release. The run then
+# creates the tag itself. Uses PyPI Trusted Publishing (OIDC), so no API token is stored in GitHub.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, as in pyproject.toml (for example 0.4.7). Creates the tag v<version> on main."
+        required: true
+        type: string
 
 jobs:
+  tag:
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write  # creates the tag when started by hand
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.5"
+      - name: Resolve the tag, creating it when started by hand
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "${EVENT}" = "push" ]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "A manual release must run on main, not ${GITHUB_REF}" >&2
+            exit 1
+          fi
+          version="$(uv run --no-project python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
+          if [ "${INPUT_VERSION}" != "${version}" ]; then
+            echo "Input version ${INPUT_VERSION} does not match pyproject.toml version ${version}" >&2
+            exit 1
+          fi
+          tag="v${version}"
+          existing="$(gh api "repos/${GITHUB_REPOSITORY}/commits/refs/tags/${tag}" --jq .sha 2>/dev/null || true)"  # the commit, also for annotated tags
+          if [ -z "${existing}" ]; then
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/tags/${tag}" -f sha="${GITHUB_SHA}" > /dev/null
+          elif [ "${existing}" != "${GITHUB_SHA}" ]; then
+            echo "Tag ${tag} already exists on ${existing}, not on ${GITHUB_SHA}" >&2
+            exit 1
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: tag
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
@@ -15,10 +64,12 @@ jobs:
         with:
           version: "0.13.5"
       - name: Check that the tag matches the package version
+        env:
+          TAG: ${{ needs.tag.outputs.tag }}
         run: |
           version="$(uv run --no-project python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
-          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
-            echo "Tag ${GITHUB_REF_NAME} does not match pyproject.toml version ${version}" >&2
+          if [ "v${version}" != "${TAG}" ]; then
+            echo "Tag ${TAG} does not match pyproject.toml version ${version}" >&2
             exit 1
           fi
       - run: uv sync --locked
@@ -49,7 +100,7 @@ jobs:
     uses: ./.github/workflows/installers.yml
 
   github-release:
-    needs: [publish, installers]
+    needs: [tag, publish, installers]
     runs-on: ubuntu-26.04
     permissions:
       contents: write
@@ -68,4 +119,5 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" dist/* installers/* --repo "${GITHUB_REPOSITORY}" --generate-notes --title "${GITHUB_REF_NAME}"
+          TAG: ${{ needs.tag.outputs.tag }}
+        run: gh release create "${TAG}" dist/* installers/* --repo "${GITHUB_REPOSITORY}" --generate-notes --title "${TAG}"

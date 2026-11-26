@@ -46,7 +46,11 @@ jobs:
             exit 1
           fi
           tag="v${version}"
-          existing="$(gh api "repos/${GITHUB_REPOSITORY}/commits/refs/tags/${tag}" --jq .sha 2>/dev/null || true)"  # the commit, also for annotated tags
+          # The commit the tag points to (also for annotated tags); empty when the tag is missing.
+          # gh prints the error body on failure, so only keep the output of a successful call.
+          if ! existing="$(gh api "repos/${GITHUB_REPOSITORY}/commits/refs/tags/${tag}" --jq .sha 2>/dev/null)"; then
+            existing=""
+          fi
           if [ -z "${existing}" ]; then
             gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/tags/${tag}" -f sha="${GITHUB_SHA}" > /dev/null
           elif [ "${existing}" != "${GITHUB_SHA}" ]; then

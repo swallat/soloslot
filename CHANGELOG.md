@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.7] - 2026-11-26
+
+### Security
+- PyTorch is updated from 2.2.2 to 2.15.0 in the lock file. This clears the advisories for
+  2.2.2 that have a published fix (PYSEC-2024-259, PYSEC-2025-41, 191, 193 to 195, 198,
+  203 to 209, PYSEC-2026-1856, 1970 and 2286). PYSEC-2025-189, 190, 192 and PYSEC-2026-139
+  list no fixed version and remain open. PyTorch is only used by the optional `separate`
+  extra; the app installers install their own PyTorch on first use.
+
 ### Changed
 - Intel Macs are no longer supported for stem separation. PyTorch 2.3 and later ship no macOS
   x86_64 wheels, and the last one that did (2.2.2) has known vulnerabilities. The locked
@@ -13,8 +22,6 @@ All notable changes to this project are documented here. The format follows
   separation setup now stops with a clear message.
 - Dependency maintenance moves from Dependabot to Renovate, with a weekly vulnerability scan
   and security releases by the weekly maintenance task (see `docs/maintenance.md`).
-
-## [0.4.7] - 2026-11-09
 
 ### Fixed
 - Installed app: after an app update the private stem separation environment kept running the
